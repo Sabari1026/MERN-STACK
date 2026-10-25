@@ -1,0 +1,119 @@
+/* Page container and grid layout */
+.page-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: var(--bg-primary);
+  overflow-x: hidden;
+}
+
+.main-content {
+  flex: 1;
+  padding-top: calc(var(--nav-height) + 32rem);
+  padding-bottom: 80rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.site-container {
+  width: 100%;
+  max-width: 1600rem;
+  margin: 0 auto;
+  padding-left: var(--margin);
+  padding-right: var(--margin);
+  box-sizing: border-box;
+}
+
+.site-container-narrow {
+  width: 100%;
+  max-width: 1100rem;
+  margin: 0 auto;
+  padding-left: var(--margin);
+  padding-right: var(--margin);
+  box-sizing: border-box;
+}
+
+.site-container-fluid {
+  width: 100%;
+  padding-left: var(--margin);
+  padding-right: var(--margin);
+  box-sizing: border-box;
+}
+
+/* 12-column grid system */
+.grid-12 {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gap);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.col-12 { grid-column: span 12; }
+.col-10 { grid-column: span 10; }
+.col-8 { grid-column: span 8; }
+.col-7 { grid-column: span 7; }
+.col-6 { grid-column: span 6; }
+.col-5 { grid-column: span 5; }
+.col-4 { grid-column: span 4; }
+.col-3 { grid-column: span 3; }
+.col-2 { grid-column: span 2; }
+
+@media (max-width: 1024px) {
+  .main-content {
+    padding-top: calc(var(--nav-height) + 24px);
+    padding-bottom: 60px;
+  }
+  .site-container, .site-container-narrow {
+    max-width: 100%;
+    padding-left: var(--margin);
+    padding-right: var(--margin);
+  }
+  .col-10, .col-8, .col-7 { grid-column: span 12; }
+  .col-6 { grid-column: span 12; }
+  .col-5, .col-4 { grid-column: span 6; }
+  .col-3 { grid-column: span 6; }
+}
+
+@media (max-width: 680px) {
+  .grid-12 {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+  }
+  .col-5, .col-4, .col-3 { width: 100%; }
+}
+
+/* Card surfaces */
+.surface-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 28rem;
+  box-sizing: border-box;
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.surface-card:hover {
+  border-color: var(--border-medium);
+}
+
+.surface-card-elevated {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 32rem;
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .surface-card {
+    padding: 20px;
+    border-radius: var(--radius-lg);
+  }
+  .surface-card-elevated {
+    padding: 24px;
+  }
+}

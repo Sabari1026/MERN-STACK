@@ -1,414 +1,359 @@
-# HireConnect — Production-Ready MERN Job & Recruitment Platform
+# HireConnect — Modern MERN-Stack Recruitment Platform
 
-HireConnect is a full-stack recruitment platform connecting candidates, recruiters, and companies with real database-backed workflows: candidate job discovery, multi-faceted filtering, application tracking, intelligent 6-factor talent matching, real-time interview scheduling with atomic conflict prevention, transactional notifications, administrative governance, and platform analytics.
+HireConnect is a full-stack, enterprise-grade recruitment platform connecting candidates, recruiters, and companies with verified database-backed workflows: candidate job discovery, multi-faceted filtering, application tracking, intelligent 6-factor talent matching, real-time interview scheduling with atomic concurrency control, transactional Resend SMTP notifications, administrative governance, and platform analytics.
+
+The repository is organized into a clean, separated MERN-stack architecture:
+- **Frontend (`frontend/`)**: React 18, Vite, React Router v6, Axios, custom modular CSS (strictly no Tailwind), responsive rem-scaling, and original Saans/Saans Mono typography.
+- **Backend (`backend/`)**: Node.js, Express.js, Mongoose ODM, MongoDB Atlas live cluster connection, Resend SMTP integration, and local persistent disk storage with path traversal protection.
+- **Automated Verification (`scripts/`)**: End-to-end acceptance tests (105 scenarios), production security audit (35 controls), live user persistence, and storage integrity suites.
 
 ---
 
 ## Table of Contents
 
-1. [Prerequisites](#1-prerequisites)
-2. [Repository Structure](#2-repository-structure)
-3. [Installing Dependencies](#3-installing-dependencies)
-4. [Configuring Environment Variables](#4-configuring-environment-variables)
-5. [Starting MongoDB or Development Database](#5-starting-mongodb-or-development-database)
-6. [Running the Application](#6-running-the-application)
-7. [Running Automated Tests](#7-running-automated-tests)
-8. [Frontend Build & Asset Verification](#8-frontend-build--asset-verification)
-9. [Configuring Production Database (MongoDB Atlas)](#9-configuring-production-database-mongodb-atlas)
-10. [Database Indexes & Production Synchronization](#10-database-indexes--production-synchronization)
-11. [Private File Storage & Resume Security](#11-private-file-storage--resume-security)
-12. [Transactional Email Delivery](#12-transactional-email-delivery)
-13. [Secure Administrator Bootstrap](#13-secure-administrator-bootstrap)
-14. [Production Deployment Architecture](#14-production-deployment-architecture)
-15. [Domain Names, CORS, and Cookie Configuration](#15-domain-names-cors-and-cookie-configuration)
-16. [Background Workers & Scheduled Tasks](#16-background-workers--scheduled-tasks)
-17. [Health & Readiness Verification](#17-health--readiness-verification)
-18. [Database Backup & Restore Procedures](#18-database-backup--restore-procedures)
-19. [Release Rollback & Recovery Procedures](#19-release-rollback--recovery-procedures)
-20. [Troubleshooting Common Issues](#20-troubleshooting-common-issues)
+1. [Architecture Overview](#1-architecture-overview)
+2. [Repository Directory Layout](#2-repository-directory-layout)
+3. [Prerequisites](#3-prerequisites)
+4. [Environment Configuration](#4-environment-configuration)
+5. [Installation & Setup](#5-installation--setup)
+6. [Running the Application (Development)](#6-running-the-application-development)
+7. [Building for Production](#7-building-for-production)
+8. [Automated Testing Suite](#8-automated-testing-suite)
+9. [Database & Indexes](#9-database--indexes)
+10. [Admin Bootstrap & Background Workers](#10-admin-bootstrap--background-workers)
+11. [Security & Storage Architecture](#11-security--storage-architecture)
+12. [API Reference & Client Services](#12-api-reference--client-services)
 
 ---
 
-## 1. Prerequisites
+## 1. Architecture Overview
 
-- **Node.js**: `v18.0.0` or higher (tested on Node `v24.x` and `v20.x LTS`).
-- **npm**: `v9.0.0` or higher.
-- **MongoDB**:
-  - Local: MongoDB Community Server 6.0+ on `mongodb://127.0.0.1:27017`
-  - Production: MongoDB Atlas M0+ cluster (`mongodb+srv://...`)
-  - *Zero-Dependency Fallback*: Models include an automatic in-memory document adapter for rapid local development and automated CI testing when no MongoDB daemon is active.
+### Frontend
+- **Framework**: React 18 (`react`, `react-dom`, `react-router-dom` v6).
+- **Build Tool**: Vite 6 with `@vitejs/plugin-react`.
+- **Styling**: Pure semantic CSS with CSS custom properties (`variables.css`, `typography.css`, `layout.css`, `global.css`, `responsive.css`).
+  - Viewport-scaled typography with the Saans and Saans Mono font families.
+  - Dark-mode primary palette (`#101216` canvas, `#1b1b1b` surfaces, `#242424` borders, `#8942e4` brand accent).
+  - Strictly **NO Tailwind CSS** and no runtime styling overhead.
+- **State & Context**:
+  - `AuthContext`: Centralized session restoration, JWT tokens in storage, auto-logout on 401.
+  - `NotificationContext`: In-app notification polling and read tracking.
+  - `ToastContext`: Universal user feedback notifications.
+- **API Client**: Centralized Axios client (`frontend/src/services/apiClient.js`) featuring Bearer token injection, request correlation IDs (`X-Request-ID`), `withCredentials: true`, and automatic 401 token refresh queue.
+
+### Backend
+- **Runtime**: Node.js 18+ / Express.js.
+- **Database**: MongoDB Atlas M0+ cluster via Mongoose 8.
+- **Email Delivery**: Genuine Resend SMTP integration (`smtp.resend.com:465` with SSL/TLS).
+- **File Storage**: Local persistent disk storage with strictly enforced private access, MIME type validation, binary magic-byte inspection, and path traversal protection.
+- **Security Middleware**: Helmet, CORS with strict origin validation, express-mongo-sanitize, express-rate-limit, cookie-parser, and centralized sanitizing error handlers.
 
 ---
 
-## 2. Repository Structure
+## 2. Repository Directory Layout
 
 ```
-├── .env.example                       # Frontend environment template
-├── .gitignore                          # Root git ignore (credentials, uploads, logs)
-├── package.json                        # Root package manifest & automation scripts
-├── server.js                           # Node.js production HTTP server & reverse proxy
-├── index.html                          # Landing page & Find Jobs interface
-├── admin/index.html                    # Administrative Command Center
-├── cases/index.html                    # Intelligent Talent Match interface
-├── profile/index.html                  # Candidate & Recruiter Dashboards
-├── services/index.html                 # Companies Discovery page
-├── settings/index.html                 # User Account & Privacy Settings
-├── signup/index.html                   # Authentication Portal (Sign In / Sign Up)
-├── _nuxt/                              # Bundled scripts, styles, Saans typography & assets
-├── backend/
-│   ├── .env.example                    # Backend environment configuration template
-│   ├── package.json                    # Backend dependencies & test configuration
-│   ├── vitest.config.mjs               # Vitest configuration
+hireconnect/
+├── .env.example                       # Root environment reference
+├── .gitignore                          # Root git ignore (node_modules, .env, dist, uploads)
+├── package.json                        # Monorepo root automation scripts
+├── package-lock.json                   # Root package lock
+├── README.md                           # Master documentation
+│
+├── backend/                            # Genuine Node.js + Express + Mongoose Backend
+│   ├── .env                            # Backend environment secrets (ignored)
+│   ├── .env.example                    # Backend environment template
+│   ├── package.json                    # Backend dependencies & test scripts
 │   ├── src/
-│   │   ├── app.js                      # Express application, security headers & routing
-│   │   ├── server.js                   # Backend standalone HTTP server & graceful shutdown
-│   │   ├── config/                     # Environment validation (env.js) & database (database.js)
-│   │   ├── controllers/                # Request handlers (auth, jobs, apps, admin, analytics)
-│   │   ├── middleware/                 # Auth, RBAC, error handling, rate limiting, sanitization
-│   │   ├── models/                     # Mongoose schemas with compound indexes & memory fallback
-│   │   ├── routes/                     # Domain route definitions (auth, candidate, job, etc.)
-│   │   ├── scripts/                    # CLI scripts (bootstrapAdmin.js, ensureIndexes.js)
-│   │   ├── services/                   # Business logic (matching, scheduling, analytics, storage)
-│   │   ├── templates/                  # Transactional email templates
-│   │   ├── utils/                      # Standardized response, error classes, tokens, logger
-│   │   ├── validators/                 # Zod schema validation
-│   │   └── workers/                    # Standalone background workers (reminderWorker.js)
-│   └── tests/                          # Automated Vitest test suites (15 suites, 313 tests)
+│   │   ├── app.js                      # Express application setup & middleware stack
+│   │   ├── server.js                   # HTTP server entry point & graceful shutdown
+│   │   ├── config/
+│   │   │   ├── database.js             # Mongoose connection & reconnection lifecycle
+│   │   │   └── env.js                  # Strict Joi environment validation
+│   │   ├── controllers/                # 14 REST API controllers
+│   │   ├── data/
+│   │   │   ├── jobsData.js             # Verified seed jobs dataset
+│   │   │   └── hireconnect_db.json     # Organization and company seed fallback
+│   │   ├── middleware/                 # Auth, RBAC, Rate Limiting, Sanitization, Uploads
+│   │   ├── models/                     # 16 Mongoose models (Users, Jobs, Meetings, etc.)
+│   │   ├── routes/                     # Modular Express routers mounted at /api/*
+│   │   ├── scripts/
+│   │   │   ├── bootstrapAdmin.js       # CLI administrator seeding
+│   │   │   └── ensureIndexes.js        # MongoDB production compound index sync
+│   │   ├── services/                   # Business logic (Matching, Scheduling, Storage, Email)
+│   │   ├── templates/                  # Responsive transactional HTML email templates
+│   │   └── utils/                      # ApiError, ApiResponse, Logger, Tokens, Encryption
+│   ├── tests/                          # 15 backend Vitest unit/integration test suites
+│   └── uploads/                        # Protected storage (avatars, resumes, temp)
+│
+├── frontend/                           # React 18 + Vite Modern Frontend
+│   ├── index.html                      # HTML5 entry point with Saans font preloading
+│   ├── package.json                    # Frontend dependencies (React, Vite, Vitest)
+│   ├── vite.config.js                  # Vite configuration with API & uploads proxy
+│   ├── public/                         # Public static assets
+│   │   ├── fonts/                      # Saans & Saans-Mono WOFF2 fonts
+│   │   ├── blueprint.cdn.prismic.io/   # Technology and company brand vector logos
+│   │   ├── images.prismic.io/          # Case studies and hero visual photography
+│   │   ├── favicon.svg, favicon.ico    # Platform brand icons
+│   │   ├── robots.txt, sitemap.xml     # SEO crawlers metadata
+│   │   └── print.svg, print-static.svg # Vector printer icons
+│   └── src/
+│       ├── main.jsx                    # React DOM root render
+│       ├── App.jsx                     # Root application wrapper with ToastContainer
+│       ├── app/
+│       │   ├── providers.jsx           # Combined Context Providers (Toast, Auth, Notif)
+│       │   └── router.jsx              # React Router v6 tree with ProtectedRoute
+│       ├── components/                 # Reusable UI components
+│       │   ├── layout/                 # Navbar, Footer
+│       │   ├── navigation/             # AccountMenuDropdown, RoleSwitch
+│       │   ├── notifications/          # NotificationDropdown
+│       │   ├── jobs/                   # JobCard, JobFilterPanel, ApplyModal
+│       │   ├── companies/              # CompanyCard
+│       │   └── interviews/             # InterviewBookingModal
+│       ├── context/                    # AuthContext, NotificationContext, ToastContext
+│       ├── hooks/                      # Custom React hooks (useAuth, useNotifications)
+│       ├── pages/                      # 19 Full-featured React page views
+│       ├── services/                   # apiClient & 9 feature services
+│       ├── styles/                     # Pure CSS Design System (NO Tailwind)
+│       └── tests/                      # Frontend Vitest suites (App, Auth, Jobs, Navbar)
+│
+└── scripts/                            # Operational & Verification Scripts
+    ├── run_acceptance_tests.js         # 105 end-to-end acceptance test scenarios
+    ├── test_security_audit_controls.js # 35 production security controls test suite
+    ├── test_user_persistence.js        # Live MongoDB Atlas user signup/re-login test
+    ├── test_storage_persistence.js     # Physical disk storage & path traversal test
+    ├── test_resend_email_workflows.js  # Resend SMTP transactional delivery test
+    ├── test_atlas_crud_persistence.js  # MongoDB Atlas CRUD verification
+    └── send_email_verification.js      # One-shot transactional email verification
 ```
 
 ---
 
-## 3. Installing Dependencies
+## 3. Prerequisites
 
-Install both root and backend dependencies:
-
-```bash
-# Install root dependencies
-npm install
-
-# Install backend dependencies
-npm --prefix backend install
-```
+- **Node.js**: `v18.0.0` or higher (tested on Node `v20.x LTS` and `v24.x`).
+- **npm**: `v9.0.0` or higher.
+- **MongoDB**: MongoDB Atlas M0+ cluster or local MongoDB 6.0+.
 
 ---
 
-## 4. Configuring Environment Variables
-
-### Frontend (`.env`)
-
-Copy `.env.example` in the project root:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Description | Default |
-|:---|:---|:---|
-| `VITE_API_BASE_URL` | Base URL for API requests. Use `/api` for same-origin or reverse proxies. | `/api` |
+## 4. Environment Configuration
 
 ### Backend (`backend/.env`)
 
-Copy `backend/.env.example` to `backend/.env`:
+Copy `backend/.env.example` to `backend/.env` and configure your credentials:
 
 ```bash
-cp backend/.env.example backend/.env
+# Server & Environment
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+
+# MongoDB Atlas Database
+MONGODB_URI=mongodb+srv://<username>:<password>@hireconnect.qxdwa8s.mongodb.net/hireconnect?retryWrites=true&w=majority
+
+# JWT Authentication
+JWT_SECRET=your-secure-random-32-byte-hex-secret
+JWT_EXPIRES_IN=7d
+JWT_REFRESH_SECRET=your-secure-refresh-32-byte-hex-secret
+JWT_REFRESH_EXPIRES_IN=30d
+
+# Resend SMTP Email Delivery
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=resend
+SMTP_PASS=re_your_resend_api_key
+EMAIL_FROM="HireConnect <onboarding@resend.dev>"
+
+# File Storage Configuration
+STORAGE_PROVIDER=local
+STORAGE_LOCAL_DIR=./uploads
+STORAGE_MAX_FILE_SIZE_MB=5
 ```
 
-**Generate strong cryptographic secrets before running in production:**
+### Frontend (`frontend/.env`)
+
+Copy `frontend/.env.example` to `frontend/.env`:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Essential Backend Variables:
-
-| Variable | Description | Required in Prod |
-|:---|:---|:---|
-| `NODE_ENV` | Application environment (`development` / `production` / `test`) | Yes |
-| `PORT` | HTTP listener port (e.g. `5000` or `3000`) | Yes |
-| `MONGODB_URI` | MongoDB connection URI (`mongodb+srv://...`) | Yes |
-| `FRONTEND_URL` | Comma-separated allowed CORS origins | Yes |
-| `JWT_SECRET` | Cryptographic secret for signing JWT access tokens (min 32 chars) | Yes |
-| `COOKIE_SECRET` | Secret for cookie parsing and tamper protection (min 32 chars) | Yes |
-| `COOKIE_SAME_SITE` | Cookie SameSite attribute (`lax` / `strict` / `none`) | Default: `lax` |
-| `ENABLE_BACKGROUND_WORKER` | Toggle internal interview reminder worker (`true` / `false`) | Default: `true` |
-| `STORAGE_PROVIDER` | Storage backend (`local` or S3-compatible) | Default: `local` |
-| `SMTP_HOST` | Transactional email SMTP host (e.g. `smtp.resend.com`) | For email |
-| `SMTP_PORT` | SMTP port (`587` or `465`) | For email |
-| `SMTP_USER` | SMTP username | For email |
-| `SMTP_PASS` | SMTP password / API token | For email |
-| `ADMIN_BOOTSTRAP_PASSWORD` | Strong password for initial admin CLI bootstrap | For setup |
-
----
-
-## 5. Starting MongoDB or Development Database
-
-- **Local MongoDB**: Ensure the MongoDB daemon is active:
-  ```bash
-  mongod --dbpath /data/db
-  ```
-- **MongoDB Atlas**: Ensure your IP address is allowlisted in Network Access and the user credentials have `readWrite` permissions on the `hireconnect` database.
-- **In-Memory Development**: If MongoDB is not present, the application automatically boots using the built-in in-memory document store.
-
----
-
-## 6. Running the Application
-
-### Development / Local Server (Full Stack)
-
-Start the combined static server with Express API integration on port 3000:
-
-```bash
-npm start
-```
-
-Access the interface in your browser:
-- Landing Page & Find Jobs: `http://localhost:3000/`
-- Companies Discovery: `http://localhost:3000/services/`
-- Talent Match Recommendations: `http://localhost:3000/cases/` (or `/talent-match`)
-- User Profile Dashboard: `http://localhost:3000/profile/`
-- Administrative Command Center: `http://localhost:3000/admin/`
-- Sign In / Sign Up: `http://localhost:3000/signup/`
-
-### Dedicated Backend Service
-
-To run only the standalone Express API service on port 5000:
-
-```bash
-npm run backend:start
+VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
 ---
 
-## 7. Running Automated Tests
+## 5. Installation & Setup
 
-Run the full automated Vitest test suite (15 test files, 313 unit and integration tests):
-
-```bash
-npm test
-```
-
-Run end-to-end acceptance tests against the running server (28 scenarios, 105 assertions):
+Install dependencies for all workspaces:
 
 ```bash
-node run_acceptance_tests.js
+# 1. Install root dependencies
+npm install
+
+# 2. Install backend dependencies
+cd backend && npm install && cd ..
+
+# 3. Install frontend dependencies
+cd frontend && npm install && cd ..
 ```
 
 ---
 
-## 8. Frontend Build & Asset Verification
+## 6. Running the Application (Development)
 
-Verify that all bundled ES modules and application engines are intact:
+Run the backend and frontend development servers concurrently:
+
+### Option A: Using Root npm Scripts
+
+Terminal 1 (Backend API):
+```bash
+npm run dev:backend
+```
+Backend starts on **http://localhost:5000**.
+
+Terminal 2 (Frontend Dev Server):
+```bash
+npm run dev:frontend
+```
+Frontend starts on **http://localhost:5173** (with automatic `/api` and `/uploads` proxy to port 5000).
+
+### Option B: Running Directly in Workspaces
+
+```bash
+# Terminal 1: Backend
+cd backend
+npm run dev
+
+# Terminal 2: Frontend
+cd frontend
+npm run dev
+```
+
+---
+
+## 7. Building for Production
+
+Compile the React 18 frontend into production-ready static assets:
 
 ```bash
 npm run build
 ```
 
----
+This invokes Vite to build optimized bundles into `frontend/dist/`.
 
-## 9. Configuring Production Database (MongoDB Atlas)
-
-1. Create a MongoDB Atlas cluster (M0 free tier or dedicated cluster).
-2. Create a database user with `readWrite` privileges restricted to the `hireconnect` database. Avoid using administrative `atlasAdmin` roles for application connections.
-3. Configure **Network Access**:
-   - For container or cloud deployments (e.g. AWS, Render, Heroku), add the server IP addresses or enable secure VPC peering.
-4. Copy the SRV connection string:
-   ```env
-   MONGODB_URI=mongodb+srv://<db_user>:<db_password>@cluster0.abcde.mongodb.net/hireconnect?retryWrites=true&w=majority
-   ```
+To start the production backend server:
+```bash
+npm start
+```
 
 ---
 
-## 10. Database Indexes & Production Synchronization
+## 8. Automated Testing Suite
 
-In production, automatic index creation at boot is disabled (`autoIndex: false`) to avoid startup latency. Synchronize all compound, text, and unique indexes using the dedicated CLI command:
+HireConnect features comprehensive multi-layered automated test coverage.
+
+### Run All Unit & Integration Tests (Backend + Frontend)
+```bash
+npm test
+```
+
+### Run Backend Unit Tests (313 Tests across 15 Suites)
+```bash
+npm run test:backend
+```
+
+### Run Frontend Component & Router Tests (9 Tests across 4 Suites)
+```bash
+npm run test:frontend
+```
+
+### Run End-to-End Acceptance Tests (105 Scenarios)
+```bash
+npm run test:acceptance
+```
+Validates the complete 28-scenario lifecycle against the live running API: private profiles, resume download permissions, company verification gates, job pause/close consistency, 6-factor talent matching, recruiter availability discovery, interview booking with atomic conflict prevention, notifications, admin moderation, and analytics CSV exports.
+
+### Run Production Security Audit (35 Controls)
+```bash
+npm run test:security
+```
+Validates 401 unauthenticated protection, 403 RBAC boundaries, magic-byte binary inspection, path traversal protection, NoSQL injection neutralization, CORS enforcement, and sensitive credential omission.
+
+### Run Live User Persistence Test
+```bash
+npm run test:persistence
+```
+Registers live candidate and recruiter accounts in MongoDB Atlas, updates profiles, uploads resumes, applies to jobs, bookmarks openings, wipes sessions, and verifies 100% data restoration upon re-login.
+
+### Run File Storage & Cold Restart Verification
+```bash
+npm run test:storage
+```
+Tests avatar and resume disk persistence, binary validation, path traversal guards, and cold backend restarts.
+
+---
+
+## 9. Database & Indexes
+
+To ensure high-performance queries and enforce uniqueness constraints across MongoDB Atlas:
 
 ```bash
 npm run db:indexes
 ```
 
-Indexes built:
-- `User`: `{ email: 1 }` (unique), `{ role: 1, accountStatus: 1 }`
-- `Job`: Text index (`title`, `description`, `skills`, `companyName`), `{ status: 1, publishedAt: -1 }`, `{ recruiter: 1, status: 1 }`
-- `Application`: `{ job: 1, candidate: 1 }` (unique), `{ job: 1, status: 1 }`, `{ candidate: 1, submittedAt: -1 }`
-- `Meeting`: `{ recruiter: 1, status: 1, startAt: 1, endAt: 1 }`, `{ candidate: 1, startAt: 1 }`
-- `Notification`: `{ recipient: 1, createdAt: -1 }`, `{ deduplicationKey: 1 }` (sparse)
-- `SavedJob`: `{ candidate: 1, job: 1 }` (unique)
-- `CompanyMembership`: `{ company: 1, user: 1 }` (unique)
+This synchronizes compound indexes across all 16 collections:
+- `users`: `{ email: 1 }`, `{ role: 1 }`
+- `jobs`: `{ status: 1, createdAt: -1 }`, `{ slug: 1 }`, `{ company: 1 }`, text index on `{ title, description, skills }`
+- `meetings`: `{ recruiter: 1, startAt: 1 }`, `{ candidate: 1, startAt: 1 }`, `{ reference: 1 }`
+- `applications`: `{ candidate: 1, job: 1 }`, `{ status: 1 }`
+- `notifications`: `{ user: 1, isRead: 1, createdAt: -1 }`
 
 ---
 
-## 11. Private File Storage & Resume Security
+## 10. Admin Bootstrap & Background Workers
 
-- Candidate resumes and user profile photos are stored outside the public document root in `backend/uploads/`.
-- Resumes are stored using random UUID storage keys (`crypto.randomUUID()`) to prevent predictable URL access.
-- Resumes are never served statically. Access is mediated through authenticated streaming endpoints (`GET /api/profile/resume/download/:userId`) enforcing:
-  - Candidates can only download their own resumes.
-  - Recruiters can only download resumes for candidates who applied to their jobs or opted into discoverability.
-- Uploads enforce strict 5MB (photo) and 10MB (resume) size limits and validate file headers (PDF magic bytes `%PDF-`, JPEG `\xFF\xD8\xFF`, PNG `\x89PNG`).
-
----
-
-## 12. Transactional Email Delivery
-
-HireConnect uses Nodemailer with genuine SMTP transport for delivery of:
-- Application status changes.
-- New applicant notifications for recruiters.
-- Interview booking confirmations, calendar invites, and rescheduling notices.
-- 24-hour and 1-hour interview reminder notices.
-- Password reset instructions with expiring cryptographic tokens.
-
-Configure your SMTP credentials in `backend/.env`:
-```env
-SMTP_HOST=smtp.resend.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=resend
-SMTP_PASS=re_your_api_key_here
-EMAIL_FROM=notifications@hireconnect.io
-```
-
-When credentials are not configured, the system logs email transactions to structured console logs without failing API requests or dropping notifications.
-
----
-
-## 13. Secure Administrator Bootstrap
-
-Public registration for administrative accounts is strictly prohibited. To safely initialize the platform administrator:
-
-1. Configure administrative credentials in `backend/.env`:
-   ```env
-   ADMIN_BOOTSTRAP_EMAIL=admin@hireconnect.io
-   ADMIN_BOOTSTRAP_PASSWORD=YourStrongUniquePassword123!
-   ADMIN_BOOTSTRAP_NAME="Platform Administrator"
-   ```
-2. Execute the bootstrap CLI script:
-   ```bash
-   npm run bootstrap:admin
-   ```
-3. The script is idempotent: it initializes the administrator if missing or updates role permissions without duplicating accounts.
-
----
-
-## 14. Production Deployment Architecture
-
-```
-                          [ Client Browser ]
-                                  │
-                                  ▼
-                     [ Reverse Proxy / HTTPS ]
-                    (Nginx / Cloudflare / Caddy)
-                                  │
-                 ┌────────────────┴────────────────┐
-                 ▼                                 ▼
-         [ Static Assets ]                 [ API & Node.js ]
-      (HTML, CSS, JS, Fonts)            (server.js / backendApp)
-                                                   │
-                                ┌──────────────────┴──────────────────┐
-                                ▼                                     ▼
-                      [ MongoDB Atlas ]                      [ Private Storage ]
-                     (Primary Database)                       (backend/uploads)
-```
-
-### Option A: Single Node / Container (Render, Railway, DigitalOcean, VM)
-Run the root server which serves static assets and proxies API calls:
+### Bootstrap Initial Platform Administrator
 ```bash
-npm install
-npm run build
-npm start
+npm run bootstrap:admin
 ```
+Prompts or seeds the primary platform administrator (`admin@hireconnect.io`) with privileged access to the Administrative Command Center.
 
-### Option B: Decoupled Deployment
-- **Frontend**: Host HTML/JS/CSS on Vercel, Netlify, or AWS S3/CloudFront with `VITE_API_BASE_URL=https://api.hireconnect.io/api`.
-- **Backend**: Host `backend/src/server.js` on Render, Fly.io, Heroku, or AWS ECS with `FRONTEND_URL=https://hireconnect.io`.
-- **Background Worker**: Run `npm run worker:reminders` as an independent background worker process.
-
----
-
-## 15. Domain Names, CORS, and Cookie Configuration
-
-1. Set `FRONTEND_URL` in `backend/.env` to the exact production domain(s):
-   ```env
-   FRONTEND_URL=https://hireconnect.io,https://www.hireconnect.io
-   ```
-2. Cookies are configured with:
-   - `httpOnly: true` (prevents XSS cookie theft)
-   - `secure: true` (enforces HTTPS delivery in production)
-   - `sameSite: 'lax'` (or `'none'` for decoupled cross-domain setups)
-
----
-
-## 16. Background Workers & Scheduled Tasks
-
-The interview reminder worker scans for meetings entering 24-hour and 1-hour notice windows and dispatches notifications and emails with atomic deduplication keys (`reminder:meeting:<id>:user:<id>:interval:<key>`).
-
-- **Single Instance**: Set `ENABLE_BACKGROUND_WORKER=true` (enabled by default).
-- **Multi-Instance (Clustered)**: Set `ENABLE_BACKGROUND_WORKER=false` on web nodes to prevent redundant database polling, and run a dedicated worker instance:
-  ```bash
-  npm run worker:reminders
-  ```
-
----
-
-## 17. Health & Readiness Verification
-
-Monitoring endpoints for Docker, Kubernetes, or load balancer health checks:
-
-- **Liveness Probe**: `GET /api/health/live`
-  - Returns `200 OK` if the process is alive, including uptime and memory usage.
-- **Readiness Probe**: `GET /api/health/ready`
-  - Returns `200 OK` when the database connection is active and ready to process transactions.
-  - Returns `503 Service Unavailable` if MongoDB is disconnecting or offline.
-- **Standard Health**: `GET /api/health`
-
+### Background Interview Reminder Worker
 ```bash
-curl -i http://localhost:3000/api/health/ready
+npm run worker:reminders
 ```
+Runs the automated background reminder service that checks upcoming interviews, delivers 24-hour and 1-hour transactional reminder emails via Resend SMTP, and records notification outbox records.
 
 ---
 
-## 18. Database Backup & Restore Procedures
+## 11. Security & Storage Architecture
 
-### Automated Atlas Backups
-Enable continuous cloud backups in MongoDB Atlas with daily point-in-time recovery.
-
-### Manual CLI Backup (`mongodump`)
-```bash
-mongodump --uri="mongodb+srv://<user>:<password>@cluster0.abcde.mongodb.net/hireconnect" --archive=backup_$(date +%Y%m%d).archive --gzip
-```
-
-### Manual CLI Restore (`mongorestore`)
-```bash
-mongorestore --uri="mongodb+srv://<user>:<password>@cluster0.abcde.mongodb.net/hireconnect" --archive=backup_20261025.archive --gzip --drop
-```
+- **Private Resumes**: Stored outside public web roots in `backend/uploads/resumes/`. Download requests require active JWT authentication and ownership validation (candidate owner or recruiter with an active application review).
+- **Public Avatars**: Stored in `backend/uploads/avatars/` and served via sanitized HTTP streams with long-lived client caching headers (`Cache-Control: public, max-age=86400`).
+- **Binary Signature Inspection**: Uploads are inspected using magic-byte headers to reject renamed executables or malicious payloads disguised as PDFs or images.
+- **Path Traversal Defense**: All storage keys are strictly validated with `path.relative` boundaries to prevent directory escape attacks.
+- **Zero Secret Leakage**: Database connection strings, SMTP passwords, and JWT secrets are never logged or exposed to client bundles.
 
 ---
 
-## 19. Release Rollback & Recovery Procedures
+## 12. API Reference & Client Services
 
-1. **Code Rollback**:
-   - Revert git commit to previous verified release tag: `git checkout <release-tag>`.
-   - Re-run `npm install` and `npm run build`.
-   - Restart the server process using your process manager (`pm2 restart hireconnect` or container restart).
-2. **Schema Compatibility**:
-   - Models use flexible schema definitions with safe defaults (`default: null` or `default: false`), ensuring backwards and forwards compatibility between releases.
-3. **Storage Preservation**:
-   - The `uploads/` directory must reside on a persistent volume across container deployments. Ensure backups include persistent volumes.
+The React frontend interacts with the backend through modular services located in `frontend/src/services/`:
 
----
-
-## 20. Troubleshooting Common Issues
-
-| Issue | Cause | Resolution |
-|:---|:---|:---|
-| `[Configuration Error] In production mode, JWT_SECRET must be set...` | Default development secret used in production. | Run secret generator and set a unique string (min 32 chars) in `.env`. |
-| `503 Service Unavailable: database is disconnected` | MongoDB is unreachable. | Verify `MONGODB_URI` string and Atlas IP allowlist. |
-| `CORS Error: Origin not permitted` | Browser origin not listed in `FRONTEND_URL`. | Add origin to `FRONTEND_URL` in `backend/.env`. |
-| `SLOT_CONFLICT (409 Conflict)` | Attempted to book an occupied interview slot. | Candidate should pick another time slot from available slots. |
-| `413 Payload Too Large` | Uploaded resume or avatar exceeds size limit. | Ensure file is <= 10MB for resumes or <= 5MB for photos. |
+| Service | File | Key Endpoints | Description |
+| :--- | :--- | :--- | :--- |
+| `authService` | `authService.js` | `/api/auth/*` | Login, Registration, Logout, Current User, Password Reset |
+| `jobService` | `jobService.js` | `/api/jobs/*`, `/api/recruiter/jobs/*` | Public discovery, filtering, CRUD lifecycle, draft/publish |
+| `applicationService` | `applicationService.js` | `/api/applications/*`, `/api/saved-jobs/*` | Direct apply, candidate tracking, recruiter review, bookmarks |
+| `profileService` | `profileService.js` | `/api/candidates/*`, `/api/recruiters/*` | Candidate/Recruiter profiles, avatar upload, resume upload/download |
+| `companyService` | `companyService.js` | `/api/companies/*` | Company directory, public profiles, recruiter organization setup |
+| `matchingService` | `matchingService.js` | `/api/matching/*` | 6-factor candidate match recommendations and recruiter talent match |
+| `interviewService` | `interviewService.js` | `/api/meetings/*`, `/api/recruiters/:id/availability` | Availability slots, booking with conflict prevention, reschedule, cancel |
+| `notificationService` | `notificationService.js` | `/api/notifications/*` | In-app alerts, unread counts, mark-as-read, email preferences |
+| `analyticsService` | `analyticsService.js` | `/api/admin/analytics/*`, `/api/analytics/*` | Platform metrics, funnel conversion, CSV export, candidate activity |
 
 ---
 
 ## License
 
-Proprietary © HireConnect Inc. All rights reserved.
+This project is proprietary and confidential. Built for HireConnect.

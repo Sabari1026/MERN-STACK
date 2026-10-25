@@ -1,0 +1,79 @@
+:root {
+  /* Brand color palette */
+  --bg-primary: #1b1b1b;
+  --bg-surface: #242424;
+  --bg-surface-glass: rgba(36, 36, 36, 0.7);
+  --bg-surface-hover: #2e2e2e;
+  --bg-modal: #101216;
+  --bg-elevated: #16181d;
+  --bg-input: #121316;
+
+  /* Text & Foreground */
+  --text-primary: #f7f5f2;
+  --text-secondary: #929292;
+  --text-muted: #666666;
+  --text-light: #ffffff;
+  --text-dark: #1b1b1b;
+
+  /* Brand Accents */
+  --color-accent-purple: #8942e4;
+  --color-accent-purple-light: #9d5ff5;
+  --color-accent-mint: #34d399;
+  --color-accent-mint-bg: rgba(52, 211, 153, 0.12);
+  --color-accent-purple-bg: rgba(137, 66, 228, 0.12);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.12);
+  --color-danger: #ef4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.12);
+  --color-info: #38bdf8;
+  --color-info-bg: rgba(56, 189, 248, 0.12);
+
+  /* Borders & Shadows */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.14);
+  --border-active: rgba(137, 66, 228, 0.5);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 24px rgba(137, 66, 228, 0.25);
+
+  /* Border Radii */
+  --radius-sm: 6rem;
+  --radius-md: 12rem;
+  --radius-lg: 16rem;
+  --radius-xl: 24rem;
+  --radius-full: 9999px;
+
+  /* Dynamic Grid System */
+  --rvw: 1vw;
+  --margin: 28rem;
+  --gap: 28rem;
+  --column: calc(var(--rvw) * 100 / 12 - var(--margin) * 2 / 12 - var(--gap) * 11 / 12);
+  --nav-height: 52rem;
+  --button-width: 130rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms cubic-bezier(0.19, 1, 0.22, 1);
+  --transition-smooth: 400ms cubic-bezier(0.19, 1, 0.22, 1);
+  --transition-slow: 1000ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --margin: 24px;
+    --gap: 16px;
+    --nav-height: 56px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+  }
+}
+
+@media (max-width: 580px) {
+  :root {
+    --margin: 16px;
+    --gap: 12px;
+  }
+}

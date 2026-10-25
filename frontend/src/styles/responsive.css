@@ -1,0 +1,42 @@
+/* Additional responsive utility classes */
+.hide-desktop {
+  display: none !important;
+}
+
+@media (max-width: 1024px) {
+  .hide-desktop {
+    display: block !important;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.gap-sm { gap: 8rem; }
+.gap-md { gap: 16rem; }
+.gap-lg { gap: 24rem; }
+.gap-xl { gap: 32rem; }
+
+@media (max-width: 1024px) {
+  .gap-sm { gap: 6px; }
+  .gap-md { gap: 12px; }
+  .gap-lg { gap: 18px; }
+  .gap-xl { gap: 24px; }
+}

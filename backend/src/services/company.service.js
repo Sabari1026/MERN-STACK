@@ -25,7 +25,9 @@ async function seedCompaniesIfEmpty() {
     const count = await Company.countDocuments();
     if (count > 0) return;
 
-    const seedPath = path.join(__dirname, '..', '..', '..', 'data', 'hireconnect_db.json');
+    const internalSeedPath = path.join(__dirname, '..', 'data', 'hireconnect_db.json');
+    const rootSeedPath = path.join(__dirname, '..', '..', '..', 'data', 'hireconnect_db.json');
+    const seedPath = fs.existsSync(internalSeedPath) ? internalSeedPath : rootSeedPath;
     let seedCompanies = [];
     if (fs.existsSync(seedPath)) {
       const raw = fs.readFileSync(seedPath, 'utf8');
