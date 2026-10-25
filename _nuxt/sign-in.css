@@ -1,0 +1,653 @@
+/* HireConnect Sign In Page Styles */
+.hc-auth-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: min(460rem, 92vw);
+  background: rgba(22, 22, 24, 0.82);
+  -webkit-backdrop-filter: blur(28px);
+  backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  padding: 28rem 32rem 24rem;
+  box-sizing: border-box;
+  font-family: Saans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #f7f5f2;
+}
+
+@media (max-width: 1024px) {
+  .hc-auth-container {
+    width: min(440px, 92vw);
+    padding: 22px 20px 20px;
+    border-radius: 16px;
+  }
+}
+
+.hc-auth-header {
+  text-align: center;
+  margin-bottom: 20rem;
+}
+
+.hc-auth-super-title {
+  font-size: 24rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #f7f5f2;
+  margin: 0 0 4rem;
+  line-height: 1.15;
+}
+
+.hc-auth-subtitle {
+  font-family: 'Saans Mono', monospace;
+  font-size: 13rem;
+  color: #929292;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 1024px) {
+  .hc-auth-super-title {
+    font-size: 20px;
+  }
+  .hc-auth-subtitle {
+    font-size: 12px;
+  }
+}
+
+/* Segmented Tab Switcher */
+.hc-role-segmented {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12rem;
+  padding: 4rem;
+  gap: 4rem;
+  margin-bottom: 20rem;
+}
+
+.hc-role-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rem;
+  padding: 10rem 12rem;
+  border-radius: 8rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #888888;
+  font-family: 'Saans Mono', monospace;
+  font-size: 13rem;
+  font-weight: 450;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+  white-space: nowrap;
+}
+
+.hc-role-tab:hover:not(.active) {
+  color: #cccccc;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.hc-role-tab[data-role="employee"].active {
+  background: rgba(161, 216, 192, 0.15);
+  color: #a1d8c0;
+  border-color: rgba(161, 216, 192, 0.35);
+  box-shadow: 0 2px 12px rgba(161, 216, 192, 0.12);
+}
+
+.hc-role-tab[data-role="recruiter"].active {
+  background: rgba(196, 150, 255, 0.15);
+  color: #c496ff;
+  border-color: rgba(196, 150, 255, 0.35);
+  box-shadow: 0 2px 12px rgba(196, 150, 255, 0.12);
+}
+
+.hc-role-tab-icon {
+  font-size: 14rem;
+  line-height: 1;
+}
+
+@media (max-width: 1024px) {
+  .hc-role-tab {
+    font-size: 11px;
+    padding: 8px 6px;
+    gap: 4px;
+  }
+}
+
+/* Alert Banner */
+.hc-auth-alert {
+  padding: 10rem 14rem;
+  border-radius: 8rem;
+  font-size: 13rem;
+  margin-bottom: 16rem;
+  display: flex;
+  align-items: center;
+  gap: 8rem;
+  line-height: 1.35;
+  animation: hcFadeIn 0.3s ease;
+}
+
+.hc-auth-alert.error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.hc-auth-alert.success {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86efac;
+}
+
+.hc-auth-alert.warning {
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #fde047;
+}
+
+@keyframes hcFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Form Styles */
+.hc-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14rem;
+}
+
+.hc-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6rem;
+}
+
+.hc-label {
+  font-family: 'Saans Mono', monospace;
+  font-size: 12rem;
+  color: #a3a3a3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hc-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.hc-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10rem;
+  padding: 12rem 14rem;
+  font-family: Saans, sans-serif;
+  font-size: 14rem;
+  color: #f7f5f2;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.hc-input::placeholder {
+  color: #666666;
+}
+
+.hc-input:focus {
+  border-color: #a1d8c0;
+  box-shadow: 0 0 0 3px rgba(161, 216, 192, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.recruiter-mode .hc-input:focus {
+  border-color: #c496ff;
+  box-shadow: 0 0 0 3px rgba(196, 150, 255, 0.2);
+}
+
+.hc-pw-toggle {
+  position: absolute;
+  right: 10rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #888888;
+  cursor: pointer;
+  padding: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.hc-pw-toggle:hover {
+  color: #f7f5f2;
+}
+
+.hc-pw-toggle svg {
+  width: 18rem;
+  height: 18rem;
+  fill: currentColor;
+}
+
+/* Remember Me & Forgot Password Row */
+.hc-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12rem;
+  margin-top: -2rem;
+}
+
+.hc-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8rem;
+  cursor: pointer;
+  color: #a3a3a3;
+  user-select: none;
+}
+
+.hc-checkbox-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16rem;
+  height: 16rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4rem;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  margin: 0;
+}
+
+.hc-checkbox-label input[type="checkbox"]:checked {
+  background: #a1d8c0;
+  border-color: #a1d8c0;
+}
+
+.recruiter-mode .hc-checkbox-label input[type="checkbox"]:checked {
+  background: #c496ff;
+  border-color: #c496ff;
+}
+
+.hc-checkbox-label input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 5rem;
+  top: 2rem;
+  width: 4rem;
+  height: 8rem;
+  border: solid #1b1b1b;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.hc-forgot-link {
+  color: #888888;
+  text-decoration: none;
+  font-family: 'Saans Mono', monospace;
+  transition: color 0.2s ease;
+}
+
+.hc-forgot-link:hover {
+  color: #f7f5f2;
+  text-decoration: underline;
+}
+
+/* Submit Buttons */
+.hc-submit-btn {
+  width: 100%;
+  padding: 13rem 20rem;
+  border-radius: 10rem;
+  border: none;
+  font-family: 'Saans Mono', monospace;
+  font-size: 14rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rem;
+  transition: all 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hc-candidate-btn {
+  background: #a1d8c0;
+  color: #121a16;
+}
+
+.hc-candidate-btn:hover {
+  background: #bbf0d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(161, 216, 192, 0.3);
+}
+
+.hc-recruiter-btn {
+  background: #c496ff;
+  color: #171120;
+}
+
+.hc-recruiter-btn:hover {
+  background: #d6b3ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(196, 150, 255, 0.3);
+}
+
+.hc-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Spinner */
+.hc-spinner {
+  width: 16rem;
+  height: 16rem;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: hcSpin 0.8s linear infinite;
+}
+
+@keyframes hcSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Translucent Divider */
+.hc-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12rem;
+  margin: 2rem 0;
+}
+
+.hc-auth-divider::before,
+.hc-auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hc-auth-divider span {
+  font-family: 'Saans Mono', monospace;
+  font-size: 11rem;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Google Sign In Button */
+.hc-google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rem;
+  padding: 12rem 18rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10rem;
+  color: #f7f5f2;
+  font-family: Saans, sans-serif;
+  font-size: 13rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hc-google-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.hc-google-icon {
+  width: 18rem;
+  height: 18rem;
+  flex-shrink: 0;
+}
+
+/* Fast Demo Credentials Pill */
+.hc-demo-badge {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8rem;
+  padding: 6rem 10rem;
+  font-family: 'Saans Mono', monospace;
+  font-size: 11rem;
+  color: #888888;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.hc-demo-badge:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #f7f5f2;
+}
+
+/* Bottom Links */
+.hc-switch-view {
+  text-align: center;
+  font-size: 12rem;
+  color: #888888;
+  margin-top: 4rem;
+}
+
+.hc-switch-view a {
+  color: #f7f5f2;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.hc-switch-view a:hover {
+  color: #a1d8c0;
+}
+
+.recruiter-mode .hc-switch-view a:hover {
+  color: #c496ff;
+}
+
+/* Remove timeline factor completely */
+._timeline_qsdh7_1, ._track_qsdh7_15, ._sticky_qsdh7_8, [class*="_timeline_"] {
+  display: none !important;
+  height: 0 !important;
+  visibility: hidden !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Modal Overlay for Registration / Forgot Password / Google Setup */
+.hc-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 10, 12, 0.88);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  z-index: 2147483647 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rem;
+  box-sizing: border-box;
+  opacity: 1 !important;
+}
+
+@keyframes hcModalFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hc-modal {
+  width: min(520rem, 95vw);
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20rem;
+  padding: 30rem 34rem;
+  box-sizing: border-box;
+  color: #f7f5f2;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 1024px) {
+  .hc-modal {
+    width: min(440px, 95vw);
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+}
+
+.hc-modal-close {
+  position: absolute;
+  top: 18rem;
+  right: 18rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #cccccc;
+  width: 32rem;
+  height: 32rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18rem;
+  transition: all 0.2s ease;
+}
+
+.hc-modal-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.hc-modal-title {
+  font-size: 22rem;
+  font-weight: 500;
+  margin: 0 0 6rem;
+}
+
+.hc-modal-desc {
+  font-family: 'Saans Mono', monospace;
+  font-size: 12rem;
+  color: #888888;
+  margin: 0 0 20rem;
+}
+
+.hc-oauth-code-block {
+  background: #0e0e10;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8rem;
+  padding: 12rem 16rem;
+  font-family: monospace;
+  font-size: 12rem;
+  color: #a1d8c0;
+  margin: 12rem 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Dedicated Registration Layout Additions */
+.hc-auth-container.signup {
+  width: min(520rem, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.hc-auth-container.signup::-webkit-scrollbar {
+  width: 6rem;
+}
+
+.hc-auth-container.signup::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6rem;
+}
+
+.hc-form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12rem;
+}
+
+@media (max-width: 600px) {
+  .hc-form-row-2 {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+.hc-terms-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8rem;
+  font-size: 12rem;
+  color: #a0a0a0;
+  cursor: pointer;
+  line-height: 1.4;
+  margin: 8rem 0 16rem;
+  user-select: none;
+}
+
+.hc-terms-label input[type="checkbox"] {
+  margin-top: 2rem;
+  accent-color: #a1d8c0;
+  width: 15rem;
+  height: 15rem;
+}
+
+.hc-terms-label a {
+  color: #a1d8c0;
+  text-decoration: underline;
+}
+
+.hc-role-tab[data-role="recruiter"].active ~ * .hc-terms-label a {
+  color: #c496ff;
+}
+
+.hc-pw-strength-bar {
+  height: 3rem;
+  border-radius: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  margin-top: 4rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.hc-pw-strength-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.hc-pw-strength-text {
+  font-size: 10rem;
+  font-family: var(--hc-font-mono, monospace);
+  color: #777;
+  margin-top: 2rem;
+  text-align: right;
+}

@@ -1,0 +1,53 @@
+# ==============================================================================
+# HIRECONNECT ROOT GITIGNORE
+# ==============================================================================
+
+# Environment & credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+*.pfx
+
+# Node dependencies
+node_modules/
+package-lock.json.bak
+
+# Uploads and user-generated documents (stored outside source control)
+uploads/
+backend/uploads/
+*.pdf
+!public/**/*.pdf
+
+# Logs and runtime data
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Test artifacts and coverage
+coverage/
+.vitest-cache/
+backend/.vitest-cache/
+test-reports/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs and temp files
+dist/
+dist-ssr/
+*.tsbuildinfo
+.temp/
+tmp/

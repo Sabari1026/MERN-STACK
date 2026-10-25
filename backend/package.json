@@ -1,0 +1,37 @@
+{
+  "name": "hireconnect-backend",
+  "version": "1.0.0",
+  "description": "Production-ready MERN backend foundation for HireConnect",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bootstrap:admin": "node src/scripts/bootstrapAdmin.js",
+    "db:indexes": "node src/scripts/ensureIndexes.js",
+    "worker:reminders": "node src/workers/reminderWorker.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.9.5",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.2.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

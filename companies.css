@@ -1,0 +1,790 @@
+/* HireConnect Companies Page Styles */
+
+/* Hide old static header so our new Companies Directory & Recruiter Portal take center stage */
+html[data-page-name="approach"] ._header_n0r8q_1,
+html[data-page-name="approach"] ._introSection_n0r8q_53 {
+  display: none !important;
+}
+
+.hc-comp-container {
+  width: 100%;
+  max-width: 1360rem;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 0 var(--margin);
+  position: relative;
+  z-index: 10;
+  font-family: Saans, sans-serif;
+  color: #f7f5f2;
+}
+
+/* Hero Header */
+.hc-comp-hero {
+  text-align: center;
+  margin: 0 auto 40rem;
+  max-width: 880rem;
+}
+
+.hc-comp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rem;
+  background: rgba(161, 216, 192, 0.08);
+  border: 1px solid rgba(161, 216, 192, 0.25);
+  border-radius: 9999px;
+  padding: 6rem 16rem;
+  font-family: Saans Mono, monospace;
+  font-size: 13rem;
+  color: #a1d8c0;
+  margin-bottom: 18rem;
+}
+
+.hc-comp-badge::before {
+  content: "";
+  display: inline-block;
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  background: #a1d8c0;
+  box-shadow: 0 0 8rem #a1d8c0;
+}
+
+.hc-comp-title {
+  font-family: Saans, sans-serif;
+  font-size: clamp(34rem, 4.2vw, 58rem);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: #f7f5f2;
+  margin: 0 0 16rem;
+}
+
+.hc-comp-title .mint {
+  color: #a1d8c0;
+}
+
+.hc-comp-title .purple {
+  color: #c496ff;
+}
+
+.hc-comp-subtitle {
+  font-size: clamp(15rem, 1.3vw, 19rem);
+  color: #989898;
+  line-height: 1.5;
+  margin: 0 auto;
+  max-width: 660rem;
+}
+
+/* Recruiter Bar */
+.hc-recruiter-bar {
+  background: rgba(30, 24, 40, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(196, 150, 255, 0.25);
+  border-radius: 16rem;
+  padding: 16rem 24rem;
+  margin: 0 auto 32rem;
+  max-width: 1040rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rem;
+  flex-wrap: wrap;
+}
+
+.hc-rb-info {
+  display: flex;
+  align-items: center;
+  gap: 14rem;
+}
+
+.hc-rb-icon {
+  width: 38rem;
+  height: 38rem;
+  border-radius: 10rem;
+  background: rgba(196, 150, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c496ff;
+  flex-shrink: 0;
+}
+
+.hc-rb-text h4 {
+  font-size: 15rem;
+  margin: 0 0 2rem;
+  color: #fff;
+}
+
+.hc-rb-text p {
+  font-size: 12rem;
+  color: #bbb;
+  margin: 0;
+}
+
+.hc-rb-actions {
+  display: flex;
+  align-items: center;
+  gap: 10rem;
+}
+
+/* View Mode Switcher (Companies Directory vs Recruiter Management Portal) */
+.hc-view-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rem;
+  margin-bottom: 28rem;
+}
+
+.hc-view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rem;
+  padding: 10rem 20rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #aaa;
+  font-size: 14rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hc-view-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.hc-view-tab.active {
+  background: rgba(161, 216, 192, 0.12);
+  border-color: rgba(161, 216, 192, 0.4);
+  color: #a1d8c0;
+}
+
+.hc-view-tab.active.recruiter {
+  background: rgba(196, 150, 255, 0.12);
+  border-color: rgba(196, 150, 255, 0.4);
+  color: #c496ff;
+}
+
+/* Search & Filters Card */
+.hc-filter-box {
+  background: rgba(26, 26, 26, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20rem;
+  padding: 18rem;
+  margin: 0 auto 32rem;
+  max-width: 1040rem;
+  display: flex;
+  flex-direction: column;
+  gap: 14rem;
+}
+
+.hc-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12rem;
+  flex-wrap: wrap;
+}
+
+.hc-search-input-wrap {
+  flex: 2;
+  min-width: 260rem;
+  display: flex;
+  align-items: center;
+  gap: 10rem;
+  background: rgba(18, 18, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12rem;
+  padding: 12rem 16rem;
+  transition: all 0.25s ease;
+}
+
+.hc-search-input-wrap:focus-within {
+  border-color: rgba(161, 216, 192, 0.45);
+  box-shadow: 0 0 16rem rgba(161, 216, 192, 0.1);
+  background: #141414;
+}
+
+.hc-search-input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 14rem;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+}
+
+.hc-search-input::placeholder {
+  color: #777;
+}
+
+.hc-loc-select-wrap {
+  flex: 1;
+  min-width: 200rem;
+  background: rgba(18, 18, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12rem;
+  padding: 12rem 16rem;
+}
+
+.hc-loc-select {
+  background: transparent;
+  border: none;
+  color: #ddd;
+  font-size: 13rem;
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hc-loc-select option {
+  background: #181818;
+  color: #fff;
+}
+
+/* Category Filter Pills */
+.hc-cat-pills {
+  display: flex;
+  align-items: center;
+  gap: 8rem;
+  overflow-x: auto;
+  padding-bottom: 2rem;
+}
+
+.hc-cat-pill {
+  padding: 6rem 14rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #999;
+  font-size: 12rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.hc-cat-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.hc-cat-pill.active {
+  background: rgba(161, 216, 192, 0.12);
+  border-color: rgba(161, 216, 192, 0.35);
+  color: #a1d8c0;
+}
+
+/* Results Count Bar */
+.hc-results-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rem;
+  font-size: 13rem;
+  color: #888;
+  font-family: Saans Mono, monospace;
+}
+
+.hc-results-bar strong {
+  color: #f7f5f2;
+}
+
+/* Companies Grid */
+.hc-companies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360rem, 1fr));
+  gap: 24rem;
+  margin-bottom: 60rem;
+}
+
+/* Company Card */
+.hc-company-card {
+  background: rgba(28, 28, 28, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20rem;
+  padding: 24rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.35s ease,
+              border-color 0.3s ease,
+              box-shadow 0.35s ease;
+}
+
+.hc-company-card:hover {
+  transform: translateY(-4px);
+  background: rgba(36, 42, 38, 0.95); /* smooth mint-tinted dark card hover */
+  border-color: rgba(161, 216, 192, 0.45);
+  box-shadow: 0 20rem 50rem rgba(0, 0, 0, 0.6), 0 0 30rem rgba(161, 216, 192, 0.12);
+}
+
+.hc-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rem;
+  margin-bottom: 16rem;
+}
+
+.hc-comp-logo {
+  width: 52rem;
+  height: 52rem;
+  border-radius: 14rem;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.hc-comp-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hc-comp-meta {
+  flex: 1;
+}
+
+.hc-comp-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8rem;
+  flex-wrap: wrap;
+  margin-bottom: 4rem;
+}
+
+.hc-comp-name {
+  font-size: 18rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.hc-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rem;
+  font-size: 11rem;
+  font-family: Saans Mono, monospace;
+  color: #a1d8c0;
+  background: rgba(161, 216, 192, 0.12);
+  border: 1px solid rgba(161, 216, 192, 0.25);
+  border-radius: 9999px;
+  padding: 2rem 8rem;
+}
+
+.hc-comp-industry-loc {
+  font-size: 13rem;
+  color: #929292;
+  display: flex;
+  align-items: center;
+  gap: 6rem;
+  flex-wrap: wrap;
+}
+
+.hc-comp-desc {
+  font-size: 13.5rem;
+  color: #b5b5b5;
+  line-height: 1.5;
+  margin-bottom: 18rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hc-tech-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6rem;
+  margin-bottom: 20rem;
+}
+
+.hc-tech-tag {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6rem;
+  padding: 4rem 10rem;
+  font-size: 11.5rem;
+  font-family: Saans Mono, monospace;
+  color: #d1d1d1;
+}
+
+.hc-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 14rem;
+}
+
+.hc-jobs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rem;
+  font-size: 12.5rem;
+  font-family: Saans Mono, monospace;
+  color: #a1d8c0;
+}
+
+.hc-jobs-badge::before {
+  content: "";
+  display: inline-block;
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  background: #a1d8c0;
+}
+
+.hc-view-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 6rem 14rem;
+  font-size: 12.5rem;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.hc-company-card:hover .hc-view-btn {
+  background: #a1d8c0;
+  color: #111;
+  border-color: #a1d8c0;
+}
+
+/* ==================== DEDICATED PUBLIC COMPANY PROFILE ==================== */
+.hc-profile-view {
+  background: rgba(22, 22, 22, 0.85);
+  backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24rem;
+  padding: 36rem;
+  margin-bottom: 60rem;
+  animation: hcProfileFade 0.3s ease forwards;
+}
+
+@keyframes hcProfileFade {
+  from { opacity: 0; transform: translateY(10rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hc-profile-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 8rem 18rem;
+  font-size: 13rem;
+  color: #fff;
+  cursor: pointer;
+  margin-bottom: 24rem;
+  transition: all 0.2s ease;
+}
+
+.hc-profile-back-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateX(-3px);
+}
+
+.hc-profile-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rem;
+  flex-wrap: wrap;
+  padding-bottom: 28rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 30rem;
+}
+
+.hc-ph-left {
+  display: flex;
+  align-items: center;
+  gap: 20rem;
+}
+
+.hc-ph-logo {
+  width: 72rem;
+  height: 72rem;
+  border-radius: 18rem;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.hc-ph-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10rem;
+  margin-bottom: 6rem;
+}
+
+.hc-ph-name {
+  font-size: 26rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.hc-ph-details {
+  display: flex;
+  align-items: center;
+  gap: 16rem;
+  font-size: 13.5rem;
+  color: #a0a0a0;
+  flex-wrap: wrap;
+}
+
+.hc-ph-details a {
+  color: #a1d8c0;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4rem;
+}
+
+.hc-ph-details a:hover {
+  text-decoration: underline;
+}
+
+.hc-profile-columns {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 36rem;
+}
+
+@media (max-width: 900px) {
+  .hc-profile-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hc-section-title {
+  font-size: 18rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 14rem;
+  display: flex;
+  align-items: center;
+  gap: 8rem;
+}
+
+.hc-perks-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10rem;
+  margin-top: 10rem;
+}
+
+.hc-perk-item {
+  display: flex;
+  align-items: center;
+  gap: 10rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10rem;
+  padding: 10rem 14rem;
+  font-size: 13.5rem;
+  color: #ddd;
+}
+
+.hc-perk-item svg {
+  color: #a1d8c0;
+  flex-shrink: 0;
+}
+
+/* Company Active Jobs Section */
+.hc-jobs-listing {
+  margin-top: 36rem;
+  padding-top: 30rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hc-job-row-card {
+  background: rgba(30, 30, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16rem;
+  padding: 20rem;
+  margin-bottom: 14rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rem;
+  transition: all 0.25s ease;
+}
+
+.hc-job-row-card:hover {
+  background: rgba(36, 42, 38, 0.9);
+  border-color: rgba(161, 216, 192, 0.35);
+  transform: translateX(4px);
+}
+
+.hc-jr-title {
+  font-size: 16rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6rem;
+}
+
+.hc-jr-meta {
+  display: flex;
+  align-items: center;
+  gap: 14rem;
+  font-size: 13rem;
+  color: #999;
+  flex-wrap: wrap;
+}
+
+.hc-jr-salary {
+  font-family: Saans Mono, monospace;
+  color: #a1d8c0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hc-jr-actions {
+  display: flex;
+  align-items: center;
+  gap: 10rem;
+  flex-shrink: 0;
+}
+
+/* ==================== RECRUITER PORTAL VIEW ==================== */
+.hc-recruiter-portal {
+  background: rgba(22, 22, 22, 0.85);
+  backdrop-filter: blur(28px);
+  border: 1px solid rgba(196, 150, 255, 0.25);
+  border-radius: 24rem;
+  padding: 32rem;
+  margin-bottom: 60rem;
+}
+
+.hc-rp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 22rem;
+  margin-bottom: 24rem;
+  flex-wrap: wrap;
+  gap: 16rem;
+}
+
+.hc-rp-tabs {
+  display: flex;
+  gap: 10rem;
+  margin-bottom: 24rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8rem;
+}
+
+.hc-rp-tab {
+  padding: 8rem 18rem;
+  border-radius: 9999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #aaa;
+  font-size: 13.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hc-rp-tab:hover {
+  color: #fff;
+}
+
+.hc-rp-tab.active {
+  background: rgba(196, 150, 255, 0.12);
+  border-color: rgba(196, 150, 255, 0.35);
+  color: #c496ff;
+}
+
+/* Manage Jobs Table / Cards */
+.hc-manage-job-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14rem;
+  padding: 18rem;
+  margin-bottom: 12rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rem;
+  flex-wrap: wrap;
+}
+
+.hc-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3rem 10rem;
+  border-radius: 9999px;
+  font-size: 11rem;
+  font-family: Saans Mono, monospace;
+  font-weight: 600;
+}
+
+.hc-status-pill.published {
+  background: rgba(161, 216, 192, 0.12);
+  color: #a1d8c0;
+  border: 1px solid rgba(161, 216, 192, 0.25);
+}
+
+.hc-status-pill.paused {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.hc-status-pill.closed {
+  background: rgba(156, 163, 175, 0.12);
+  color: #9ca3af;
+  border: 1px solid rgba(156, 163, 175, 0.25);
+}
+
+.hc-status-pill.draft {
+  background: rgba(96, 165, 250, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.25);
+}
+
+.hc-candidates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320rem, 1fr));
+  gap: 16rem;
+}
+
+.hc-candidate-card {
+  background: rgba(28, 28, 28, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16rem;
+  padding: 18rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
