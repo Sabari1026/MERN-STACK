@@ -12,9 +12,8 @@ const { authenticate, requireRole } = require('../middleware/auth');
 router.use(authenticate);
 
 // Candidate application submission & history
-router.post('/apply', requireRole('candidate', 'employee'), applicationController.applyToJob);
-router.get('/me', requireRole('candidate', 'employee'), applicationController.getMyApplications);
-router.get('/my', requireRole('candidate', 'employee'), applicationController.getMyApplications); // Legacy compatibility alias
+router.post(['/', '/apply'], requireRole('candidate', 'employee'), applicationController.applyToJob);
+router.get(['/', '/me', '/my'], requireRole('candidate', 'employee'), applicationController.getMyApplications);
 
 // Recruiter applicant listing for a specific job
 router.get('/job/:jobId', requireRole('recruiter', 'admin'), applicationController.getJobApplications);

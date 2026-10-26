@@ -8,17 +8,17 @@ const router = express.Router();
 const matchingController = require('../controllers/matching.controller');
 const { authenticate, requireRole } = require('../middleware/auth');
 
-// Candidate job matching
+// Candidate job matching (supporting REST, feature service, and legacy paths)
 router.get(
-  '/jobs',
+  ['/jobs', '/candidate', '/candidate/recommendations'],
   authenticate,
   requireRole('candidate', 'employee'),
   matchingController.getCandidateJobMatches
 );
 
-// Recruiter candidate discovery
+// Recruiter candidate discovery (supporting REST, feature service, and legacy paths)
 router.get(
-  '/candidates',
+  ['/candidates', '/job/:jobId', '/recruiter/jobs/:jobId/candidates'],
   authenticate,
   requireRole('recruiter', 'admin'),
   matchingController.getRecruiterJobMatches

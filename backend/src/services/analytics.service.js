@@ -295,24 +295,30 @@ class AnalyticsService {
       };
     });
 
+    const safeDateKey = (val) => {
+      if (!val) return null;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    };
+
     newUsersCurrent.forEach((u) => {
-      const d = new Date(u.createdAt).toISOString().split('T')[0];
-      if (dateMap[d]) dateMap[d].users++;
+      const d = safeDateKey(u.createdAt);
+      if (d && dateMap[d]) dateMap[d].users++;
     });
 
     newJobsCurrent.forEach((j) => {
-      const d = new Date(j.createdAt).toISOString().split('T')[0];
-      if (dateMap[d]) dateMap[d].jobs++;
+      const d = safeDateKey(j.createdAt || j.publishedAt);
+      if (d && dateMap[d]) dateMap[d].jobs++;
     });
 
     newAppsCurrent.forEach((a) => {
-      const d = new Date(a.createdAt).toISOString().split('T')[0];
-      if (dateMap[d]) dateMap[d].applications++;
+      const d = safeDateKey(a.createdAt || a.submittedAt);
+      if (d && dateMap[d]) dateMap[d].applications++;
     });
 
     periodMeetings.forEach((m) => {
-      const d = new Date(m.createdAt || m.startAt).toISOString().split('T')[0];
-      if (dateMap[d]) dateMap[d].interviews++;
+      const d = safeDateKey(m.createdAt || m.startAt);
+      if (d && dateMap[d]) dateMap[d].interviews++;
     });
 
     const timeSeries = buckets.map((b) => dateMap[b]);
@@ -631,8 +637,14 @@ class AnalyticsService {
       dateMap[b] = { date: b, applications: 0 };
     });
     periodApps.forEach((a) => {
-      const d = new Date(a.createdAt).toISOString().split('T')[0];
-      if (dateMap[d]) dateMap[d].applications++;
+      const val = a.createdAt || a.submittedAt;
+      if (val) {
+        const parsedD = new Date(val);
+        if (!isNaN(parsedD.getTime())) {
+          const d = parsedD.toISOString().split('T')[0];
+          if (dateMap[d]) dateMap[d].applications++;
+        }
+      }
     });
 
     return {

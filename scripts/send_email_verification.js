@@ -1,6 +1,6 @@
 const path = require('path');
 const dotenv = require('../backend/node_modules/dotenv');
-dotenv.config({ path: path.resolve(__dirname, 'backend/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../backend/.env') });
 
 process.env.NODE_ENV = 'development';
 

@@ -70,6 +70,18 @@ const publishJob = asyncHandler(async (req, res) => {
   });
 });
 
+const pauseJob = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const pausedJob = await jobService.updateJob(id, { status: 'paused' }, req.user);
+
+  res.status(200).json({
+    success: true,
+    message: 'Job paused successfully',
+    data: { job: pausedJob },
+    job: pausedJob
+  });
+});
+
 const closeJob = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const closedJob = await jobService.closeJob(id, req.user);
@@ -118,6 +130,7 @@ module.exports = {
   getJobById,
   updateJob,
   publishJob,
+  pauseJob,
   closeJob,
   updateJobStatusLegacy
 };

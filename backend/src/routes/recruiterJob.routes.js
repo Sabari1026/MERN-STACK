@@ -19,6 +19,7 @@ router.get('/', recruiterJobController.getRecruiterJobs);
 router.get('/:id', recruiterJobController.getJobById);
 router.patch('/:id', recruiterJobController.updateJob);
 router.patch('/:id/publish', recruiterJobController.publishJob);
+router.patch('/:id/pause', recruiterJobController.pauseJob);
 router.patch('/:id/close', recruiterJobController.closeJob);
 
 // Recruiter Applicant Management for Job

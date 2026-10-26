@@ -27,14 +27,14 @@ const router = express.Router();
 // RECRUITER AVAILABILITY CONFIGURATION (Recruiter/Admin only)
 // ============================================================================
 router.get(
-  '/recruiter/availability',
+  ['/recruiter/availability', '/recruiters/me/availability'],
   authenticate,
   requireRole('recruiter', 'admin'),
   getRecruiterAvailability
 );
 
 router.put(
-  '/recruiter/availability',
+  ['/recruiter/availability', '/recruiters/me/availability'],
   authenticate,
   requireRole('recruiter', 'admin'),
   updateRecruiterAvailability

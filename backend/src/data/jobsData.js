@@ -10386,13 +10386,6 @@ const JOBS = [
 ];
 
 function getJobs(query = {}) {
-  try {
-    const db = require('./dbService.js');
-    if (db && typeof db.getJobs === 'function') {
-      return db.getJobs(query);
-    }
-  } catch (err) {}
-
   const {
     q = "",
     location = "all",
@@ -10496,14 +10489,6 @@ function getJobs(query = {}) {
 }
 
 function getJobById(id) {
-  try {
-    const db = require('./dbService.js');
-    if (db && typeof db.getJobById === 'function') {
-      return db.getJobById(id);
-    }
-  } catch (err) {
-    // fallback
-  }
   return JOBS.find(j => j.id === id) || null;
 }
 

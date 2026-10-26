@@ -248,13 +248,6 @@ const login = asyncHandler(async (req, res) => {
         const createdComp = await Company.findOne({ createdBy: userId });
         if (createdComp) company = createdComp.toJSON ? createdComp.toJSON() : createdComp;
       }
-
-      if (!company) {
-        try {
-          const dbService = require('../../../dbService');
-          company = dbService.getCompanyForRecruiter(userId);
-        } catch {}
-      }
     }
   } catch (profErr) {
     logger.warn('[Auth] Error fetching profile during login: ' + profErr.message);
@@ -316,13 +309,6 @@ const getMe = asyncHandler(async (req, res) => {
       } else {
         const createdComp = await Company.findOne({ createdBy: userId });
         if (createdComp) company = createdComp.toJSON ? createdComp.toJSON() : createdComp;
-      }
-
-      if (!company) {
-        try {
-          const dbService = require('../../../dbService');
-          company = dbService.getCompanyForRecruiter(userId);
-        } catch {}
       }
     }
   } catch (e) {
