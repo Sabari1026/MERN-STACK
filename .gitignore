@@ -4,8 +4,9 @@
 
 # Environment & credentials
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!**/.env.example
 *.pem
 *.key
 *.cert
@@ -48,6 +49,7 @@ Thumbs.db
 # Build outputs and temp files
 dist/
 dist-ssr/
+build/
 *.tsbuildinfo
 .temp/
 tmp/
