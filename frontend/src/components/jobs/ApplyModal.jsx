@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { applicationService } from '../../services/applicationService';
@@ -13,17 +13,55 @@ export function ApplyModal({ job, isOpen, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [resumeFile, setResumeFile] = useState(null);
   const [uploadingResume, setUploadingResume] = useState(false);
+  const [screeningAnswers, setScreeningAnswers] = useState({});
+
+  const screeningQuestions = job && Array.isArray(job.screeningQuestions) ? job.screeningQuestions : [];
+
+  // Reset/initialize screening answers when job or modal changes
+  useEffect(() => {
+    if (job?.screeningQuestions && Array.isArray(job.screeningQuestions)) {
+      const initial = {};
+      job.screeningQuestions.forEach((sq, idx) => {
+        const key = typeof sq === 'object' ? (sq.id || `q_${idx}`) : `q_${idx}`;
+        initial[key] = '';
+      });
+      setScreeningAnswers(initial);
+    } else {
+      setScreeningAnswers({});
+    }
+  }, [job, isOpen]);
 
   if (!isOpen || !job) return null;
 
   const hasExistingResume = !!(profile?.resume || user?.resume);
   const existingResumeName = profile?.resume?.filename || profile?.resume?.originalName || 'Current Resume on File';
 
+  const handleAnswerChange = (key, val) => {
+    setScreeningAnswers((prev) => ({ ...prev, [key]: val }));
+  };
+
   const handleApply = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
     try {
+      // Validate required screening questions
+      if (screeningQuestions.length > 0) {
+        for (let i = 0; i < screeningQuestions.length; i++) {
+          const sq = screeningQuestions[i];
+          const key = typeof sq === 'object' ? (sq.id || `q_${i}`) : `q_${i}`;
+          const qText = typeof sq === 'string' ? sq : (sq.question || sq.title || sq.text || `Question ${i + 1}`);
+          const isRequired = typeof sq === 'object' ? Boolean(sq.required) : false;
+          const ans = (screeningAnswers[key] || '').trim();
+
+          if (isRequired && !ans) {
+            toast.error(`Please answer the required screening question: "${qText}"`);
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
       let activeResumeId = profile?.resume?._id || profile?.resume?.id || profile?.resumeAssetId;
 
       // If candidate attached a fresh resume file
@@ -34,10 +72,21 @@ export function ApplyModal({ job, isOpen, onClose, onSuccess }) {
         setUploadingResume(false);
       }
 
+      // Format answers matching Application schema: [{ question: string, answer: string }]
+      const formattedAnswers = screeningQuestions.map((sq, i) => {
+        const key = typeof sq === 'object' ? (sq.id || `q_${i}`) : `q_${i}`;
+        const qText = typeof sq === 'string' ? sq : (sq.question || sq.title || sq.text || `Question ${i + 1}`);
+        return {
+          question: qText,
+          answer: (screeningAnswers[key] || '').trim()
+        };
+      });
+
       await applicationService.applyForJob({
         jobId: job._id || job.id,
         resume: activeResumeId,
         coverLetter: coverLetter.trim(),
+        answers: formattedAnswers,
         candidateSnapshot: {
           name: user.name,
           email: user.email,
@@ -153,6 +202,107 @@ export function ApplyModal({ job, isOpen, onClose, onSuccess }) {
                   </div>
                 )}
               </div>
+
+              {/* Screening Questions (if job has any) */}
+              {screeningQuestions.length > 0 && (
+                <div style={{ marginBottom: '20rem', padding: '16rem', backgroundColor: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)' }}>
+                  <div
+                    style={{
+                      fontSize: '14rem',
+                      fontWeight: 600,
+                      marginBottom: '14rem',
+                      color: 'var(--text-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span>Screening Questions</span>
+                    <span className="badge badge-purple" style={{ fontSize: '11rem' }}>
+                      {screeningQuestions.length} {screeningQuestions.length === 1 ? 'Question' : 'Questions'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16rem' }}>
+                    {screeningQuestions.map((sq, idx) => {
+                      const key = typeof sq === 'object' ? (sq.id || `q_${idx}`) : `q_${idx}`;
+                      const qText = typeof sq === 'string' ? sq : (sq.question || sq.title || sq.text || `Question ${idx + 1}`);
+                      const isRequired = typeof sq === 'object' ? Boolean(sq.required) : false;
+                      const qType = typeof sq === 'object' ? (sq.type || 'text') : 'text';
+                      const options = typeof sq === 'object' && Array.isArray(sq.options) ? sq.options : [];
+
+                      return (
+                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ marginBottom: '6px' }}>
+                            {qText}
+                            {isRequired ? (
+                              <span style={{ color: 'var(--color-danger, #ef4444)', marginLeft: '4px' }}>*</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', marginLeft: '4px', fontSize: '12rem' }}>(Optional)</span>
+                            )}
+                          </label>
+
+                          {qType === 'textarea' ? (
+                            <textarea
+                              rows={3}
+                              placeholder="Type your response..."
+                              value={screeningAnswers[key] || ''}
+                              onChange={(e) => handleAnswerChange(key, e.target.value)}
+                              required={isRequired}
+                            />
+                          ) : qType === 'yes_no' ? (
+                            <div style={{ display: 'flex', gap: '16rem', marginTop: '6px' }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                <input
+                                  type="radio"
+                                  name={`sq_${key}`}
+                                  value="Yes"
+                                  checked={screeningAnswers[key] === 'Yes'}
+                                  onChange={(e) => handleAnswerChange(key, e.target.value)}
+                                  required={isRequired}
+                                />
+                                <span>Yes</span>
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                                <input
+                                  type="radio"
+                                  name={`sq_${key}`}
+                                  value="No"
+                                  checked={screeningAnswers[key] === 'No'}
+                                  onChange={(e) => handleAnswerChange(key, e.target.value)}
+                                  required={isRequired}
+                                />
+                                <span>No</span>
+                              </label>
+                            </div>
+                          ) : qType === 'multiple_choice' && options.length > 0 ? (
+                            <select
+                              value={screeningAnswers[key] || ''}
+                              onChange={(e) => handleAnswerChange(key, e.target.value)}
+                              required={isRequired}
+                            >
+                              <option value="">-- Select an option --</option>
+                              {options.map((opt, oIdx) => (
+                                <option key={oIdx} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder="Your answer..."
+                              value={screeningAnswers[key] || ''}
+                              onChange={(e) => handleAnswerChange(key, e.target.value)}
+                              required={isRequired}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Cover Letter */}
               <div className="form-group">

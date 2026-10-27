@@ -115,6 +115,22 @@ class ApplicationService {
       throw ApiError.conflict('You have already submitted an application for this position.');
     }
 
+    // 4.5. Screening questions validation
+    if (job.screeningQuestions && Array.isArray(job.screeningQuestions) && job.screeningQuestions.length > 0) {
+      for (const sq of job.screeningQuestions) {
+        const isRequired = typeof sq === 'object' ? Boolean(sq.required) : false;
+        const qText = typeof sq === 'string' ? sq : (sq.question || sq.title || sq.text || '');
+        if (isRequired) {
+          const match = (data.answers || []).find(
+            (a) => a.question && a.question.trim().toLowerCase() === qText.trim().toLowerCase()
+          );
+          if (!match || !match.answer || !match.answer.trim()) {
+            throw ApiError.badRequest(`Screening question "${qText}" requires an answer.`);
+          }
+        }
+      }
+    }
+
     // 5. Gather Candidate Profile & Resume Snapshot
     let candidateProfile = await CandidateProfile.findOne({ user: candidateId }).populate('resume');
     if (!candidateProfile && (candidateUser.email === 'candidate@hireconnect.io' || candidateUser.name?.includes('Aarav'))) {

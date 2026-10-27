@@ -233,6 +233,12 @@ const candidateProfileSchema = new mongoose.Schema(
       maxlength: 2000,
       default: ''
     },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: ''
+    },
     phone: {
       type: String,
       trim: true,
@@ -331,6 +337,10 @@ const candidateProfileSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    isDiscoverable: {
+      type: Boolean,
+      default: false
+    },
     profileVisibility: {
       type: String,
       enum: ['private', 'verified_recruiters', 'public'],
@@ -352,6 +362,16 @@ const candidateProfileSchema = new mongoose.Schema(
         ret.id = ret._id ? ret._id.toString() : ret.id;
         const uid = ret.user ? (ret.user._id ? ret.user._id.toString() : ret.user.toString()) : '';
         ret.userId = uid;
+        ret.summary = ret.summary || ret.bio || '';
+        ret.bio = ret.summary;
+        ret.discoverability = ret.discoverability !== undefined ? Boolean(ret.discoverability) : Boolean(ret.isDiscoverable);
+        ret.isDiscoverable = ret.discoverability;
+        ret.privacy = {
+          isDiscoverable: ret.discoverability,
+          profileVisibility: ret.profileVisibility || 'private',
+          allowResumeDownload: ret.resumeVisibility === 'verified_recruiters' || ret.resumeVisibility === 'public',
+          hideContactInfo: Boolean(ret.hideContactInfo)
+        };
         if (ret.resume && typeof ret.resume === 'object') {
           ret.resume.fileName = ret.resume.fileName || ret.resume.originalFilename || 'Resume.pdf';
           ret.resume.fileSize = ret.resume.fileSize != null ? ret.resume.fileSize : ret.resume.sizeBytes;
@@ -481,9 +501,25 @@ const originalSave = mongoose.Model.prototype.save;
 candidateProfileSchema.method(
   'save',
   async function (options) {
+    if (this.bio !== undefined && !this.summary) {
+      this.summary = this.bio;
+    } else if (this.summary !== undefined && !this.bio) {
+      this.bio = this.summary;
+    }
+    if (this.isDiscoverable !== undefined) {
+      this.discoverability = Boolean(this.isDiscoverable);
+    } else if (this.discoverability !== undefined) {
+      this.isDiscoverable = Boolean(this.discoverability);
+    }
     this.calculateCompleteness();
     if (mongoose.connection.readyState === 1) {
       return originalSave.call(this, options);
+    }
+    if (process.env.NODE_ENV !== 'test' && process.env.MONGODB_URI && mongoose.connection.readyState !== 1) {
+      const err = new Error('Database write failed: Persistent database connection is not active.');
+      err.code = 'DATABASE_DISCONNECTED';
+      err.statusCode = 503;
+      throw err;
     }
     await this.validate();
     this.updatedAt = new Date();

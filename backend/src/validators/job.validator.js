@@ -44,6 +44,17 @@ const optionalSafeHttpUrl = z
     }
   );
 
+const screeningQuestionItemSchema = z.union([
+  z.string().trim().min(1).transform(q => ({ question: q, required: false, type: 'text', options: [] })),
+  z.object({
+    id: z.string().optional(),
+    question: z.string().trim().min(1),
+    required: z.boolean().optional().default(false),
+    type: z.string().optional().default('text'),
+    options: z.array(z.string().trim()).optional().default([])
+  })
+]);
+
 const createJobSchema = z
   .object({
     title: z
@@ -103,6 +114,7 @@ const createJobSchema = z
     requirements: z.array(z.string().trim().max(500)).optional().default([]),
     perks: z.array(z.string().trim().max(200)).optional().default([]),
     benefits: z.array(z.string().trim().max(200)).optional().default([]),
+    screeningQuestions: z.array(screeningQuestionItemSchema).optional().default([]),
     applicationMethod: z.enum(['internal', 'external']).optional().default('internal'),
     externalApplicationUrl: optionalSafeHttpUrl,
     applyUrl: optionalSafeHttpUrl,
@@ -195,6 +207,7 @@ const updateJobSchema = z
     requirements: z.array(z.string().trim().max(500)).optional(),
     perks: z.array(z.string().trim().max(200)).optional(),
     benefits: z.array(z.string().trim().max(200)).optional(),
+    screeningQuestions: z.array(screeningQuestionItemSchema).optional(),
     applicationMethod: z.enum(['internal', 'external']).optional(),
     externalApplicationUrl: optionalSafeHttpUrl,
     applyUrl: optionalSafeHttpUrl,

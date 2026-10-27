@@ -197,6 +197,18 @@ const jobSchema = new mongoose.Schema(
       type: [String],
       default: []
     },
+    screeningQuestions: {
+      type: [
+        {
+          id: { type: String, default: () => `sq-${Date.now()}-${Math.random().toString(36).substring(2, 7)}` },
+          question: { type: String, trim: true, required: true },
+          required: { type: Boolean, default: false },
+          type: { type: String, default: 'text' },
+          options: { type: [String], default: [] }
+        }
+      ],
+      default: []
+    },
     applicationMethod: {
       type: String,
       enum: ['internal', 'external'],
@@ -432,6 +444,7 @@ class MemoryJobDocument {
     const perksList = Array.isArray(data.perks) ? data.perks : (Array.isArray(data.benefits) ? data.benefits : []);
     this.perks = [...perksList];
     this.benefits = Array.isArray(data.benefits) ? [...data.benefits] : [...perksList];
+    this.screeningQuestions = Array.isArray(data.screeningQuestions) ? [...data.screeningQuestions] : [];
 
     this.applicationMethod = data.applicationMethod || (data.applyUrl || data.externalApplicationUrl ? 'external' : 'internal');
     this.externalApplicationUrl = data.externalApplicationUrl || data.applyUrl || null;

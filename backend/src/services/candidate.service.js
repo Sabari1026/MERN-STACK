@@ -15,6 +15,7 @@ const logger = require('../utils/logger');
 const ALLOWED_CANDIDATE_FIELDS = [
   'headline',
   'summary',
+  'bio',
   'location',
   'phone',
   'contactEmail',
@@ -35,6 +36,7 @@ const ALLOWED_CANDIDATE_FIELDS = [
   'avatarUrl',
   'resumeVisibility',
   'discoverability',
+  'isDiscoverable',
   'profileVisibility',
   'hideContactInfo'
 ];
@@ -81,10 +83,34 @@ class CandidateService {
       }
     }
 
+    // Bi-directional mapping between bio and summary
+    if (updateData.bio !== undefined) {
+      profile.summary = updateData.bio;
+      profile.bio = updateData.bio;
+    }
+    if (updateData.summary !== undefined) {
+      profile.summary = updateData.summary;
+      profile.bio = updateData.summary;
+    }
+
+    // Normalize root-level isDiscoverable and discoverability
+    if (updateData.isDiscoverable !== undefined) {
+      const val = Boolean(updateData.isDiscoverable);
+      profile.discoverability = val;
+      profile.isDiscoverable = val;
+    }
+    if (updateData.discoverability !== undefined) {
+      const val = Boolean(updateData.discoverability);
+      profile.discoverability = val;
+      profile.isDiscoverable = val;
+    }
+
     // Handle nested privacy settings object from frontend
     if (updateData.privacy && typeof updateData.privacy === 'object') {
       if (updateData.privacy.isDiscoverable !== undefined) {
-        profile.discoverability = Boolean(updateData.privacy.isDiscoverable);
+        const val = Boolean(updateData.privacy.isDiscoverable);
+        profile.discoverability = val;
+        profile.isDiscoverable = val;
       }
       if (updateData.privacy.allowResumeDownload !== undefined) {
         profile.resumeVisibility = updateData.privacy.allowResumeDownload
@@ -316,9 +342,18 @@ class CandidateService {
       (requesterUser.email === 'candidate@hireconnect.io' && (targetUserId === 'user-candidate-aarav' || targetUserId.toString().includes('aarav')))
     );
     const isRecruiter = requesterUser && requesterUser.role === 'recruiter';
+    const isCandidateDiscoverable = Boolean(profile.discoverability || profile.isDiscoverable);
 
-    if (!isOwner && !profile.discoverability && !isRecruiter) {
-      throw ApiError.forbidden('This candidate profile is not public.');
+    if (!isOwner && !isCandidateDiscoverable) {
+      if (isRecruiter) {
+        const applicationService = require('./application.service');
+        const hasApplication = await applicationService.hasActiveApplication(targetUserId, requesterUser.id || requesterUser._id);
+        if (!hasApplication) {
+          throw ApiError.forbidden('This candidate profile is not public.');
+        }
+      } else {
+        throw ApiError.forbidden('This candidate profile is not public.');
+      }
     }
 
     const safeObj = profile.toJSON();
@@ -341,13 +376,18 @@ class CandidateService {
    * Search and return only candidates with discoverability enabled
    */
   async discoverCandidates({ q, skills } = {}) {
-    const profiles = await CandidateProfile.find({ discoverability: true });
+    const profiles = await CandidateProfile.find({
+      $or: [
+        { discoverability: true },
+        { isDiscoverable: true }
+      ]
+    });
     const queryTerm = (q || '').toLowerCase().trim();
     const skillsTerm = (skills || '').toLowerCase().trim();
 
     const list = [];
     for (const p of profiles) {
-      if (!p.discoverability) continue;
+      if (!p.discoverability && !p.isDiscoverable) continue;
       const u = await User.findById(p.user);
       const name = u ? u.name : '';
       const headline = p.headline || '';

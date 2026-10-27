@@ -20,10 +20,12 @@ export function CandidateProfilePage() {
 
   // Form State
   const [headline, setHeadline] = useState(profile?.headline || '');
-  const [bio, setBio] = useState(profile?.bio || '');
+  const [bio, setBio] = useState(profile?.bio || profile?.summary || '');
   const [location, setLocation] = useState(profile?.location || '');
   const [phone, setPhone] = useState(profile?.phone || '');
-  const [isDiscoverable, setIsDiscoverable] = useState(profile?.isDiscoverable ?? true);
+  const [isDiscoverable, setIsDiscoverable] = useState(
+    profile?.isDiscoverable ?? profile?.privacy?.isDiscoverable ?? profile?.discoverability ?? false
+  );
   const [skills, setSkills] = useState(profile?.skills || []);
   const [newSkill, setNewSkill] = useState('');
 
@@ -36,10 +38,12 @@ export function CandidateProfilePage() {
   useEffect(() => {
     if (profile) {
       setHeadline(profile.headline || '');
-      setBio(profile.bio || '');
+      setBio(profile.bio || profile.summary || '');
       setLocation(profile.location || '');
       setPhone(profile.phone || '');
-      setIsDiscoverable(profile.isDiscoverable ?? true);
+      setIsDiscoverable(
+        profile.isDiscoverable ?? profile.privacy?.isDiscoverable ?? profile.discoverability ?? false
+      );
       setSkills(profile.skills || []);
       setExperiences(profile.experience || []);
       setEducation(profile.education || []);
@@ -91,9 +95,14 @@ export function CandidateProfilePage() {
       const res = await profileService.updateCandidateProfile({
         headline: headline.trim(),
         bio: bio.trim(),
+        summary: bio.trim(),
         location: location.trim(),
         phone: phone.trim(),
         isDiscoverable,
+        discoverability: isDiscoverable,
+        privacy: {
+          isDiscoverable
+        },
         skills,
         experience: experiences,
         education

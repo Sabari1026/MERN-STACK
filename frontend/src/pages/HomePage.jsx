@@ -15,19 +15,23 @@ export function HomePage() {
   const [selectedJobForApply, setSelectedJobForApply] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadFeatured() {
       try {
         setLoading(true);
         const res = await jobService.getJobs({ limit: 6 });
         const jobs = res?.data?.jobs || res?.jobs || [];
-        setFeaturedJobs(jobs);
+        if (isMounted) setFeaturedJobs(jobs);
       } catch (err) {
         // Fallback
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
     loadFeatured();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleToggleSave = async (jobId) => {

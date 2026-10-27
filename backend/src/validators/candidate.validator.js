@@ -144,6 +144,7 @@ const privacySchema = z.object({
 const updateCandidateProfileSchema = z.object({
   headline: z.string().trim().max(200).optional(),
   summary: z.string().trim().max(2000).optional(),
+  bio: z.string().trim().max(2000).optional(),
   name: z.string().trim().min(2).max(100).optional(),
   phone: z.string().trim().max(30).optional(),
   contactEmail: z.string().trim().email().optional().or(z.literal('')),
@@ -165,6 +166,7 @@ const updateCandidateProfileSchema = z.object({
   avatarUrl: optionalUrl.or(z.literal('')),
   resumeVisibility: z.enum(['private', 'verified_recruiters', 'public']).optional(),
   discoverability: z.boolean().optional(),
+  isDiscoverable: z.boolean().optional(),
   profileVisibility: z.enum(['private', 'verified_recruiters', 'public']).optional(),
   hideContactInfo: z.boolean().optional(),
   privacy: privacySchema.optional()
