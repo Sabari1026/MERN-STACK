@@ -46,12 +46,18 @@ const corsOptions = {
     // Allow non-browser requests (server-to-server, health checks, curl)
     if (!origin) return callback(null, true);
 
+    // Wildcard allows all origins — use only during initial deployment setup
+    if (allowedOrigins.includes('*')) return callback(null, true);
+
     const isExplicitlyAllowed = allowedOrigins.includes(origin);
     const isLocalDev =
       env.NODE_ENV !== 'production' &&
       (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
 
-    if (isExplicitlyAllowed || isLocalDev) {
+    // Allow any *.vercel.app origin to support preview deployments
+    const isVercelPreview = origin.endsWith('.vercel.app');
+
+    if (isExplicitlyAllowed || isLocalDev || isVercelPreview) {
       return callback(null, true);
     }
 

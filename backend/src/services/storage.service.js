@@ -22,6 +22,12 @@ const ALLOWED_FOLDERS = ['avatars', 'resumes', 'temp'];
  * @returns {string} Absolute path to storage root
  */
 function resolveStorageDir() {
+  // On Vercel, the filesystem is read-only except /tmp.
+  // Files stored in /tmp are ephemeral (lost on cold starts / redeployments).
+  // For persistent uploads, set STORAGE_PROVIDER=s3 and configure AWS/R2 credentials.
+  if (process.env.VERCEL === '1') {
+    return '/tmp/hireconnect-uploads';
+  }
   const configured = process.env.UPLOAD_DIR || (env && env.UPLOAD_DIR) || './uploads';
   if (path.isAbsolute(configured)) {
     return path.normalize(configured);

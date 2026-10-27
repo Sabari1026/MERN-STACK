@@ -86,13 +86,25 @@ async function connectDatabase(uri, options = {}) {
     throw new Error('Database connection failed: MONGODB_URI is undefined or empty');
   }
 
+  // Skip reconnect if already connected or connecting (serverless warm invocation)
+  const currentState = mongoose.connection.readyState;
+  if (currentState === 1) {
+    logger.debug('MongoDB already connected — reusing existing connection (serverless warm)');
+    return mongoose;
+  }
+  if (currentState === 2) {
+    logger.debug('MongoDB connection in progress — waiting...');
+    await new Promise((resolve) => mongoose.connection.once('connected', resolve));
+    return mongoose;
+  }
+
   const safeUri = logger.redactConnectionString(uri);
 
   const defaultOptions = {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
-    maxPoolSize: 50,
-    minPoolSize: 5,
+    maxPoolSize: 10,
+    minPoolSize: 1,
     autoIndex: process.env.NODE_ENV !== 'production',
     ...options
   };
