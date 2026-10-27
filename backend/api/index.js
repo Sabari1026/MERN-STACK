@@ -40,16 +40,21 @@ async function connectWithCache() {
  * Main Vercel handler — called on every incoming HTTP request
  */
 module.exports = async (req, res) => {
+  // Allow health probes to respond immediately
+  const isHealthProbe = req.url === '/health' || req.url === '/api/health' || req.url === '/api/health/live';
+
   try {
     await connectWithCache();
   } catch (err) {
     console.error('[Vercel] MongoDB connection failed:', err.message);
-    res.status(503).json({
-      success: false,
-      message: 'Service temporarily unavailable — database connection failed.',
-      code: 'DB_UNAVAILABLE'
-    });
-    return;
+    if (!isHealthProbe) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection failed. Ensure 0.0.0.0/0 is added to MongoDB Atlas Network Access (IP Access List).',
+        code: 'DB_UNAVAILABLE',
+        error: err.message
+      });
+    }
   }
 
   // Delegate to the Express application
