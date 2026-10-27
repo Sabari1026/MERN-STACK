@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export function CompanyCard({ company }) {
   const logo = company.logo || null;
   const name = company.name || 'Tech Company';
-  const openPositions = company.openPositionsCount ?? company.jobCount ?? 0;
+  const openPositions = company.activeJobsCount ?? company.openPositionsCount ?? company.jobCount ?? company.openJobsCount ?? 0;
 
   return (
     <div

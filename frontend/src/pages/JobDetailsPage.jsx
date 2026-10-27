@@ -4,6 +4,7 @@ import { jobService } from '../services/jobService';
 import { ApplyModal } from '../components/jobs/ApplyModal';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { formatSalary } from '../utils/formatters';
 
 export function JobDetailsPage() {
   const { id } = useParams();
@@ -154,10 +155,14 @@ export function JobDetailsPage() {
                   {job.department}
                 </span>
               )}
-              {(job.salaryMin || job.salaryMax) && (
+              {(job.salaryMin || job.salaryMax || job.salary) && (
                 <span className="badge badge-purple" style={{ fontFamily: 'Saans Mono, monospace' }}>
-                  💰 {job.salaryCurrency === 'INR' ? '₹' : '$'}
-                  {job.salaryMin ? job.salaryMin.toLocaleString() : '0'} - {job.salaryMax ? job.salaryMax.toLocaleString() : 'N/A'}
+                  💰 {formatSalary(job)}
+                </span>
+              )}
+              {(job.openingsCount || job.openings) && (
+                <span className="badge badge-mint" style={{ fontFamily: 'Saans Mono, monospace' }}>
+                  👥 {job.openingsCount || job.openings} {(job.openingsCount || job.openings) === 1 ? 'Opening' : 'Openings'}
                 </span>
               )}
             </div>

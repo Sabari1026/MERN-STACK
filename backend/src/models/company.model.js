@@ -223,6 +223,8 @@ const companySchema = new mongoose.Schema(
         delete ret.contactEmail;
         delete ret.verificationNotes;
         ret.verified = ret.verificationStatus === 'verified';
+        ret.openPositionsCount = ret.activeJobsCount || 0;
+        ret.jobCount = ret.activeJobsCount || 0;
         return ret;
       }
     }
@@ -337,6 +339,8 @@ class MemoryCompanyDocument {
     delete obj.contactEmail;
     delete obj.verificationNotes;
     obj.verified = obj.verificationStatus === 'verified';
+    obj.openPositionsCount = obj.activeJobsCount || 0;
+    obj.jobCount = obj.activeJobsCount || 0;
     return obj;
   }
 

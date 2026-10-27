@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { formatSalary } from '../../utils/formatters';
 
 export function JobCard({ job, onApply, onToggleSave, isSaved = false }) {
   const { isAuthenticated, role } = useAuth();
@@ -8,14 +9,6 @@ export function JobCard({ job, onApply, onToggleSave, isSaved = false }) {
   const companyName = job.companyName || job.company?.name || 'Verified Tech Partner';
   const logo = job.company?.logo || null;
   const isCandidate = !isAuthenticated || role === 'candidate';
-
-  const formatSalary = (min, max, currency = 'USD') => {
-    if (!min && !max) return 'Competitive compensation';
-    const sym = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : '$';
-    if (min && max) return `${sym}${min.toLocaleString()} - ${sym}${max.toLocaleString()}`;
-    if (min) return `From ${sym}${min.toLocaleString()}`;
-    return `Up to ${sym}${max.toLocaleString()}`;
-  };
 
   return (
     <div
@@ -110,11 +103,16 @@ export function JobCard({ job, onApply, onToggleSave, isSaved = false }) {
               ⚡ {Math.round(job.matchScore)}% Match
             </span>
           )}
+          {(job.openingsCount || job.openings) && (
+            <span className="badge badge-gray">
+              👥 {job.openingsCount || job.openings} {(job.openingsCount || job.openings) === 1 ? 'Opening' : 'Openings'}
+            </span>
+          )}
         </div>
 
         {/* Salary */}
         <div style={{ fontSize: '15rem', color: 'var(--text-secondary)', marginBottom: '16rem', fontFamily: 'Saans Mono, monospace' }}>
-          {formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency)}
+          {formatSalary(job)}
         </div>
 
         {/* Snippet */}
