@@ -19,7 +19,7 @@ const router = express.Router();
 router.put(
   '/candidate',
   authenticate,
-  requireRole('candidate'),
+  requireRole('candidate', 'employee', 'admin'),
   validateBody(updateCandidateProfileSchema),
   candidateController.updateMyProfile
 );

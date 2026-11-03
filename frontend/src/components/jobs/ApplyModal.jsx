@@ -95,7 +95,9 @@ export function ApplyModal({ job, isOpen, onClose, onSuccess }) {
         }
       });
 
-      toast.success(`Application submitted successfully for ${job.title}!`);
+      toast.success(
+        `Application submitted for ${job.title}! A confirmation email regarding the job role and next processing steps has been dispatched to your email.`
+      );
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {

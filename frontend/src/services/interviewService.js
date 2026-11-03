@@ -30,7 +30,14 @@ export const interviewService = {
   },
 
   /**
-   * Book an interview slot (Candidate)
+   * Fetch available interview hosts/recruiters
+   */
+  async getAvailableHosts() {
+    return apiClient.get('/meetings/hosts');
+  },
+
+  /**
+   * Book an interview slot (Candidate or Recruiter)
    */
   async bookInterview(bookingData) {
     return apiClient.post('/meetings/book', bookingData);

@@ -184,15 +184,26 @@ class NotificationService {
     const jobId = job._id || job.id;
     const appId = application._id || application.id;
     const jobTitle = job.title || 'Job Opening';
-    const companyName = company?.name || 'HireConnect Partner';
+    const companyName =
+      (company && company.name) ||
+      job.companyName ||
+      (job.company && typeof job.company === 'object' && job.company.name) ||
+      (typeof job.company === 'string' ? job.company : null) ||
+      'HireConnect Partner';
     const baseUrl = this.getFrontendUrl();
-    const actionUrl = `/applications/${appId}`;
+    const actionUrl = `/profile?tab=applications`;
 
-    // 1. Candidate in-app & email notification
+    // 1. Candidate in-app & email notification with rich job role and processing details
     const candidateEmail = emailTemplates.applicationSubmitted({
       candidateName: candidate.name,
       jobTitle,
       companyName,
+      location: job.location || job.city || 'Remote',
+      employmentType: job.employmentType || 'Full-time',
+      workMode: job.workMode || 'Hybrid',
+      salary: job.salary || (job.salaryMin && job.salaryMax ? `₹${job.salaryMin} - ${job.salaryMax} LPA` : null),
+      department: job.department || job.category || 'Engineering',
+      applicationId: appId,
       actionUrl: `${baseUrl}${actionUrl}`
     });
 
@@ -200,12 +211,12 @@ class NotificationService {
       recipientId: candidateId,
       type: 'application_submitted',
       title: 'Application Submitted',
-      message: `Your application for ${jobTitle} at ${companyName} has been submitted successfully.`,
+      message: `Your application for ${jobTitle} at ${companyName} has been received and is now under processing.`,
       resourceType: 'application',
       resourceId: appId,
       actionUrl,
       deduplicationKey: `app_sub:${appId}:${candidateId}`,
-      metadata: { jobTitle, companyName, jobId },
+      metadata: { jobTitle, companyName, jobId, status: 'processing' },
       emailOptions: candidateEmail
     });
 

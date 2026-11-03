@@ -131,6 +131,19 @@ const cancelMeeting = asyncHandler(async (req, res) => {
   return res.status(200).json(result);
 });
 
+/**
+ * GET /api/meetings/hosts & GET /api/recruiters/hosts
+ * Lists available interview hosts/recruiters for scheduling
+ */
+const getInterviewHosts = asyncHandler(async (req, res) => {
+  const User = require('../models/user.model');
+  const recruiters = await User.find(
+    { role: 'recruiter', accountStatus: 'active' },
+    { name: 1, email: 1, avatarUrl: 1, role: 1 }
+  ).limit(20);
+  return res.status(200).json({ success: true, hosts: recruiters });
+});
+
 module.exports = {
   getRecruiterAvailability,
   updateRecruiterAvailability,
@@ -142,5 +155,6 @@ module.exports = {
   getMyMeetings,
   getMeetingById,
   rescheduleMeeting,
-  cancelMeeting
+  cancelMeeting,
+  getInterviewHosts
 };

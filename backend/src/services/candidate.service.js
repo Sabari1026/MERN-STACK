@@ -76,11 +76,34 @@ class CandidateService {
   async updateProfile(userId, updateData) {
     const profile = await this.getOrCreateProfile(userId);
 
-    // Apply allowed fields
+    // Apply allowed fields (special-cased fields like skills are normalized below)
     for (const key of ALLOWED_CANDIDATE_FIELDS) {
-      if (updateData[key] !== undefined) {
+      if (key !== 'skills' && updateData[key] !== undefined) {
         profile[key] = updateData[key];
       }
+    }
+
+    // Normalize skills to valid Mongoose subdocument objects
+    if (Array.isArray(updateData.skills)) {
+      profile.skills = updateData.skills
+        .map((s) => {
+          if (typeof s === 'string') {
+            const trimmed = s.trim();
+            return trimmed ? { name: trimmed, level: 'Advanced', category: 'General' } : null;
+          }
+          if (s && typeof s === 'object') {
+            const name = (s.name || s.title || '').trim();
+            return name
+              ? {
+                  name,
+                  level: s.level || 'Advanced',
+                  category: s.category || 'General'
+                }
+              : null;
+          }
+          return null;
+        })
+        .filter(Boolean);
     }
 
     // Bi-directional mapping between bio and summary

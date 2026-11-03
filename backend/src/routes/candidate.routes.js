@@ -17,19 +17,19 @@ const router = express.Router();
 // Candidate discovery for recruiters & authenticated users
 router.get('/discover', authenticate, candidateController.discoverCandidates);
 
-// Candidate-only operations for /me and sub-routes
-router.get('/me', authenticate, requireRole('candidate'), candidateController.getMyProfile);
-router.patch('/me', authenticate, requireRole('candidate'), validateBody(updateCandidateProfileSchema), candidateController.updateMyProfile);
+// Candidate operations for /me and sub-routes (supports candidates, employees, and admins)
+router.get('/me', authenticate, requireRole('candidate', 'employee', 'admin'), candidateController.getMyProfile);
+router.patch('/me', authenticate, requireRole('candidate', 'employee', 'admin'), validateBody(updateCandidateProfileSchema), candidateController.updateMyProfile);
 
 // Phase 11: Candidate Activity Analytics
-router.get('/me/analytics', authenticate, requireRole('candidate'), analyticsController.getCandidateOverview);
-router.get('/analytics/overview', authenticate, requireRole('candidate'), analyticsController.getCandidateOverview);
+router.get('/me/analytics', authenticate, requireRole('candidate', 'employee', 'admin'), analyticsController.getCandidateOverview);
+router.get('/analytics/overview', authenticate, requireRole('candidate', 'employee', 'admin'), analyticsController.getCandidateOverview);
 
 // Resume asset endpoints (rate-limited)
-router.post('/me/resume', authenticate, requireRole('candidate'), uploadLimiter, handleResumeUpload, candidateController.uploadResume);
-router.get('/me/resume', authenticate, requireRole('candidate'), candidateController.getMyResume);
-router.get('/me/resume/download', authenticate, requireRole('candidate'), candidateController.downloadMyResume);
-router.delete('/me/resume', authenticate, requireRole('candidate'), candidateController.deleteResume);
+router.post('/me/resume', authenticate, requireRole('candidate', 'employee', 'admin'), uploadLimiter, handleResumeUpload, candidateController.uploadResume);
+router.get('/me/resume', authenticate, requireRole('candidate', 'employee', 'admin'), candidateController.getMyResume);
+router.get('/me/resume/download', authenticate, requireRole('candidate', 'employee', 'admin'), candidateController.downloadMyResume);
+router.delete('/me/resume', authenticate, requireRole('candidate', 'employee', 'admin'), candidateController.deleteResume);
 
 // Public/Recruiter candidate profile inspection (honoring discoverability & privacy)
 router.get('/:userId', optionalAuth, candidateController.getPublicProfile);

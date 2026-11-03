@@ -92,23 +92,103 @@ function wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText }) 
 // ============================================================================
 // 1. APPLICATION SUBMITTED (To Candidate)
 // ============================================================================
-function applicationSubmitted({ candidateName, jobTitle, companyName, actionUrl }) {
-  const title = 'Application Submitted Successfully';
-  const preheader = `Your application for ${jobTitle} at ${companyName} has been received.`;
+function applicationSubmitted({
+  candidateName,
+  jobTitle,
+  companyName,
+  location,
+  employmentType,
+  workMode,
+  salary,
+  department,
+  applicationId,
+  actionUrl
+}) {
+  const roleName = jobTitle || 'Job Opening';
+  const employerName = companyName || 'HireConnect Partner';
+  const title = `Application Received: ${roleName}`;
+  const preheader = `Your application for ${roleName} at ${employerName} has been received and is now processing.`;
+  const refCode = applicationId ? String(applicationId).substring(String(applicationId).length - 8).toUpperCase() : 'APP-' + Math.floor(100000 + Math.random() * 900000);
+
   const contentHtml = `
-    <p>Hi ${escapeHtml(candidateName || 'there')},</p>
-    <p>Great news! Your application for <strong>${escapeHtml(jobTitle)}</strong> at <strong>${escapeHtml(companyName)}</strong> has been successfully submitted to the hiring team.</p>
-    <div class="card">
-      <div class="row"><span class="label">Position</span><span class="value">${escapeHtml(jobTitle)}</span></div>
-      <div class="row"><span class="label">Company</span><span class="value">${escapeHtml(companyName)}</span></div>
-      <div class="row"><span class="label">Status</span><span class="value">Submitted</span></div>
+    <p>Hi <strong>${escapeHtml(candidateName || 'there')}</strong>,</p>
+    <p>🎉 We're excited to let you know that your application for <strong>${escapeHtml(roleName)}</strong> at <strong>${escapeHtml(employerName)}</strong> has been successfully received and is currently <strong>Under Processing</strong>.</p>
+    
+    <!-- Job Role Details Card -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+      <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; margin-bottom: 12px;">
+        📋 Job Role Specifications
+      </div>
+      <div class="row"><span class="label">Job Title</span><span class="value">${escapeHtml(roleName)}</span></div>
+      <div class="row"><span class="label">Hiring Company</span><span class="value">${escapeHtml(employerName)}</span></div>
+      ${department ? `<div class="row"><span class="label">Department</span><span class="value">${escapeHtml(department)}</span></div>` : ''}
+      ${location ? `<div class="row"><span class="label">Location & Mode</span><span class="value">${escapeHtml(location)}${workMode ? ` (${escapeHtml(workMode)})` : ''}</span></div>` : ''}
+      ${employmentType ? `<div class="row"><span class="label">Employment Type</span><span class="value" style="text-transform: capitalize;">${escapeHtml(employmentType)}</span></div>` : ''}
+      ${salary ? `<div class="row"><span class="label">Offered Compensation</span><span class="value" style="color: #059669;">${escapeHtml(salary)}</span></div>` : ''}
+      <div class="row"><span class="label">Application Reference</span><span class="value" style="font-family: monospace;">#${escapeHtml(refCode)}</span></div>
+      <div class="row"><span class="label">Current Status</span><span class="value" style="color: #2563eb; background: #eff6ff; padding: 2px 8px; border-radius: 4px; font-size: 12px;">⚡ UNDER PROCESSING</span></div>
     </div>
-    <p>You can track the progress of your application and view updates directly from your HireConnect application history.</p>
+
+    <!-- Application Processing Pipeline -->
+    <div style="margin: 28px 0; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; background-color: #ffffff;">
+      <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 14px;">
+        🚀 Application Processing Roadmap
+      </div>
+      
+      <div style="display: flex; margin-bottom: 14px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">✓</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #0f172a;">Stage 1: Application Received</div>
+          <div style="font-size: 12px; color: #64748b;">Your verified profile and snapshot have been delivered to the hiring team.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; margin-bottom: 14px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">2</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #2563eb;">Stage 2: Technical Screening &amp; Review (In Progress)</div>
+          <div style="font-size: 12px; color: #64748b;">The recruiter is currently evaluating your qualifications, skills, and resume.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; margin-bottom: 14px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">3</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #64748b;">Stage 3: Interview Scheduling</div>
+          <div style="font-size: 12px; color: #64748b;">If shortlisted, you will receive an invitation to self-schedule an interview slot.</div>
+        </div>
+      </div>
+
+      <div style="display: flex;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">4</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #64748b;">Stage 4: Final Assessment &amp; Decision</div>
+          <div style="font-size: 12px; color: #64748b;">Discussion with engineering leaders followed by offer discussion.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Processing Timeline Notice -->
+    <div style="background-color: #f1f5f9; border-left: 4px solid #2563eb; padding: 14px 16px; border-radius: 4px; font-size: 13px; color: #475569; margin: 20px 0;">
+      <strong>⏱ What to expect next:</strong> Hiring teams typically review submissions within <strong>2 to 5 business days</strong>. You'll receive instant email alerts and in-portal notifications whenever your status changes.
+    </div>
+
+    <p style="font-size: 13px; color: #64748b; margin-top: 20px;">
+      Need to update your resume or add more portfolio work? You can manage your documents at any time from your candidate profile.
+    </p>
   `;
-  const text = `Hi ${candidateName || 'there'},\n\nYour application for ${jobTitle} at ${companyName} has been submitted successfully.\n\nView your application here: ${actionUrl}\n\nBest regards,\nThe HireConnect Team`;
+
+  const text = `Hi ${candidateName || 'there'},\n\nYour application for ${roleName} at ${employerName} has been received and is now UNDER PROCESSING.\n\nJOB ROLE DETAILS:\n- Position: ${roleName}\n- Company: ${employerName}\n${location ? `- Location: ${location} (${workMode || 'Hybrid'})\n` : ''}${employmentType ? `- Employment Type: ${employmentType}\n` : ''}${salary ? `- Compensation: ${salary}\n` : ''}- Reference Code: #${refCode}\n- Status: Under Processing / Review\n\nPROCESSING ROADMAP:\n1. Application Received (Completed)\n2. Technical Screening & Review (In Progress)\n3. Interview Scheduling (Upcoming)\n4. Final Assessment & Decision\n\nExpected review timeframe is 2-5 business days. You can track real-time progress anytime at:\n${actionUrl}\n\nBest regards,\nThe HireConnect Team`;
+
   return {
-    subject: `Application Submitted: ${jobTitle} at ${companyName}`,
-    html: wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText: 'View My Application' }),
+    subject: `Application Submitted & Processing: ${roleName} at ${employerName}`,
+    html: wrapTemplate({
+      title,
+      preheader,
+      contentHtml,
+      actionUrl,
+      actionText: 'Track Application Status'
+    }),
     text
   };
 }

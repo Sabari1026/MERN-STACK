@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { interviewService } from '../services/interviewService';
+import { InterviewBookingModal } from '../components/interviews/InterviewBookingModal';
 import { Link } from 'react-router-dom';
 
 export function InterviewSchedulerPage() {
-  const { isAuthenticated, role } = useAuth();
+  const { user, isAuthenticated, role } = useAuth();
   const { toast } = useToast();
 
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   // Recruiter Availability State
   const [weeklySchedule, setWeeklySchedule] = useState({
@@ -19,7 +21,7 @@ export function InterviewSchedulerPage() {
     thursday: { enabled: true, start: '09:00', end: '17:00' },
     friday: { enabled: true, start: '09:00', end: '17:00' }
   });
-  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata');
   const [slotDuration, setSlotDuration] = useState(30);
   const [savingSchedule, setSavingSchedule] = useState(false);
 
@@ -29,8 +31,8 @@ export function InterviewSchedulerPage() {
     setLoading(true);
     try {
       const res = await interviewService.getMyInterviews();
-      const list = res?.data?.meetings || res?.meetings || [];
-      setMeetings(list);
+      const list = res?.data?.meetings || res?.meetings || res?.data || [];
+      setMeetings(Array.isArray(list) ? list : []);
     } catch (err) {
       toast.error('Unable to load interview sessions.');
     } finally {
@@ -46,9 +48,9 @@ export function InterviewSchedulerPage() {
       async function loadAvailability() {
         try {
           const res = await interviewService.getRecruiterAvailability();
-          const data = res?.data || res;
+          const data = res?.data?.availability || res?.availability || res?.data || res;
           if (data.weeklySchedule) setWeeklySchedule(data.weeklySchedule);
-          if (data.timezone) setTimezone(data.timezone);
+          if (data.timeZone || data.timezone) setTimezone(data.timeZone || data.timezone);
           if (data.slotDurationMinutes) setSlotDuration(data.slotDurationMinutes);
         } catch (err) {
           // ignore
@@ -75,8 +77,18 @@ export function InterviewSchedulerPage() {
     e.preventDefault();
     setSavingSchedule(true);
     try {
+      // Format weeklyRules if needed
+      const weeklyRules = Object.entries(weeklySchedule)
+        .filter(([_, val]) => val && val.enabled !== false)
+        .map(([day, val]) => ({
+          weekday: day.toLowerCase(),
+          startTime: val.start || '09:00',
+          endTime: val.end || '17:00'
+        }));
+
       await interviewService.updateRecruiterAvailability({
-        weeklySchedule,
+        weeklyRules: weeklyRules.length > 0 ? weeklyRules : undefined,
+        timeZone: timezone,
         timezone,
         slotDurationMinutes: Number(slotDuration)
       });
@@ -119,11 +131,20 @@ export function InterviewSchedulerPage() {
               {/* Upcoming Meetings List */}
               <div className={role === 'recruiter' ? 'col-7' : 'col-12'}>
                 <div className="surface-card" style={{ padding: '32px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
                     <h3 className="h3">Your Scheduled Sessions ({meetings.length})</h3>
-                    <button type="button" className="btn-secondary btn-sm" onClick={loadMeetings}>
-                      <span>Refresh</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm"
+                        onClick={() => setIsBookingOpen(true)}
+                      >
+                        <span>+ Schedule Interview</span>
+                      </button>
+                      <button type="button" className="btn-secondary btn-sm" onClick={loadMeetings}>
+                        <span>Refresh</span>
+                      </button>
+                    </div>
                   </div>
 
                   {loading ? (
@@ -133,14 +154,37 @@ export function InterviewSchedulerPage() {
                   ) : meetings.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
                       <p className="body-text">No active interview bookings found.</p>
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm"
+                        style={{ marginTop: '16px' }}
+                        onClick={() => setIsBookingOpen(true)}
+                      >
+                        <span>Book an Interview Now</span>
+                      </button>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {meetings.map((m) => {
-                        const start = new Date(m.startTime);
-                        const end = new Date(m.endTime);
-                        const dateStr = start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-                        const timeStr = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                        const start = new Date(m.startAt || m.startTime);
+                        const end = new Date(m.endAt || m.endTime);
+                        const isValidDate = !isNaN(start.getTime());
+                        const dateStr = isValidDate
+                          ? start.toLocaleDateString(undefined, {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })
+                          : 'Scheduled Date';
+                        const timeStr = isValidDate
+                          ? `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : 'TBD';
+
+                        const otherParty =
+                          role === 'recruiter'
+                            ? m.candidate?.name || 'Candidate'
+                            : m.recruiter?.name || 'Technical Recruiter';
 
                         return (
                           <div
@@ -159,19 +203,43 @@ export function InterviewSchedulerPage() {
                           >
                             <div>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
-                                <span className={`badge ${m.status === 'confirmed' ? 'badge-mint' : m.status === 'cancelled' ? 'badge-red' : 'badge-purple'}`}>
-                                  {m.status ? m.status.toUpperCase() : 'CONFIRMED'}
+                                <span
+                                  className={`badge ${
+                                    m.status === 'confirmed' || m.status === 'scheduled'
+                                      ? 'badge-mint'
+                                      : m.status === 'cancelled'
+                                      ? 'badge-red'
+                                      : 'badge-purple'
+                                  }`}
+                                >
+                                  {m.status ? m.status.toUpperCase() : 'SCHEDULED'}
                                 </span>
                                 <span className="caption" style={{ color: 'var(--text-muted)' }}>
-                                  Ref: {m.meetingReference || m.reference || m._id}
+                                  Ref: {m.reference || m.meetingReference || m._id}
                                 </span>
                               </div>
                               <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                                {m.title || 'Technical Discussion'}
+                                {m.title || 'Technical Interview'}
                               </div>
-                              <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                              <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                                 📅 {dateStr} • ⏰ {timeStr}
                               </div>
+                              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                                👤 Participant: <strong>{otherParty}</strong>
+                              </div>
+                              {m.meetingLink && m.status !== 'cancelled' && (
+                                <div style={{ marginTop: '8px' }}>
+                                  <a
+                                    href={m.meetingLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn-secondary btn-sm"
+                                    style={{ display: 'inline-flex', fontSize: '12px' }}
+                                  >
+                                    <span>🎥 Join Video Room</span>
+                                  </a>
+                                </div>
+                              )}
                             </div>
 
                             {m.status !== 'cancelled' && (
@@ -234,6 +302,18 @@ export function InterviewSchedulerPage() {
           )}
         </div>
       </main>
+
+      {/* Booking Modal */}
+      {isBookingOpen && (
+        <InterviewBookingModal
+          isOpen={isBookingOpen}
+          onClose={() => setIsBookingOpen(false)}
+          onSuccess={() => {
+            setIsBookingOpen(false);
+            loadMeetings();
+          }}
+        />
+      )}
     </div>
   );
 }

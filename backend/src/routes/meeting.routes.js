@@ -16,12 +16,18 @@ const {
   getMyMeetings,
   getMeetingById,
   rescheduleMeeting,
-  cancelMeeting
+  cancelMeeting,
+  getInterviewHosts
 } = require('../controllers/meeting.controller');
 const { authenticate, requireRole } = require('../middleware/auth');
 const User = require('../models/user.model');
 
 const router = express.Router();
+
+// ============================================================================
+// INTERVIEW HOSTS / RECRUITER DISCOVERY
+// ============================================================================
+router.get(['/meetings/hosts', '/recruiters/hosts'], authenticate, getInterviewHosts);
 
 // ============================================================================
 // RECRUITER AVAILABILITY CONFIGURATION (Recruiter/Admin only)
@@ -64,7 +70,7 @@ router.delete(
 // ============================================================================
 // PUBLIC / CANDIDATE-FACING AVAILABLE SLOTS DISCOVERY
 // ============================================================================
-router.get('/recruiters/:recruiterId/available-slots', getAvailableSlots);
+router.get(['/recruiters/:recruiterId/available-slots', '/recruiters/:recruiterId/slots'], getAvailableSlots);
 
 // Legacy booking availability route compatibility: /api/bookings/availability
 router.get('/bookings/availability', async (req, res, next) => {
@@ -85,12 +91,13 @@ router.get('/bookings/availability', async (req, res, next) => {
 // ============================================================================
 // MEETING BOOKING & MANAGEMENT
 // ============================================================================
-router.post('/meetings', authenticate, bookMeeting);
-router.get('/meetings/me', authenticate, getMyMeetings);
-router.get('/meetings', authenticate, getMyMeetings);
+router.post(['/meetings', '/meetings/book'], authenticate, bookMeeting);
+router.get(['/meetings/me', '/meetings/my', '/meetings'], authenticate, getMyMeetings);
 router.get('/meetings/:meetingId', authenticate, getMeetingById);
 router.patch('/meetings/:meetingId/reschedule', authenticate, rescheduleMeeting);
+router.post('/meetings/:meetingId/reschedule', authenticate, rescheduleMeeting);
 router.patch('/meetings/:meetingId/cancel', authenticate, cancelMeeting);
+router.post('/meetings/:meetingId/cancel', authenticate, cancelMeeting);
 
 // Legacy /api/bookings compatibility routes
 router.post('/bookings', async (req, res, next) => {

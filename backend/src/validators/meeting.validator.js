@@ -62,32 +62,57 @@ const availableSlotsQuerySchema = z.object({
   timeZone: z.string().trim().refine(isValidTimeZone, { message: 'Invalid IANA time zone' }).optional().default('Asia/Kolkata')
 });
 
-const createMeetingSchema = z.object({
-  recruiterId: z.string().trim().min(1, 'recruiterId is required').optional(),
-  startAt: z.string().datetime({ message: 'startAt must be a valid ISO 8601 date string' }).optional(),
-  durationMinutes: z.number().positive().optional().default(30),
-  title: z.string().trim().max(200).optional().default('HireConnect Interview'),
-  description: z.string().trim().max(2000).optional().default(''),
-  meetingType: z.enum(['interview', 'screening', 'introductory', 'technical', 'general']).default('interview'),
-  meetingMode: z.enum(['online', 'in_person']).default('online'),
-  meetingLink: z.string().trim().optional().default(''),
-  location: z.string().trim().max(300).optional().default(''),
-  candidateNotes: z.string().trim().max(1000).optional().default(''),
-  recruiterNotes: z.string().trim().max(3000).optional().default(''),
-  applicationId: z.string().trim().optional(),
-  jobId: z.string().trim().optional(),
+const createMeetingSchema = z.preprocess(
+  (val) => {
+    if (val && typeof val === 'object') {
+      const copy = { ...val };
+      if (!copy.startAt && copy.startTime) {
+        copy.startAt = copy.startTime;
+      }
+      if (!copy.durationMinutes && copy.startTime && copy.endTime) {
+        const start = new Date(copy.startTime).getTime();
+        const end = new Date(copy.endTime).getTime();
+        if (!isNaN(start) && !isNaN(end) && end > start) {
+          copy.durationMinutes = Math.round((end - start) / 60000);
+        }
+      }
+      if (!copy.timezone && copy.timeZone) {
+        copy.timezone = copy.timeZone;
+      }
+      return copy;
+    }
+    return val;
+  },
+  z.object({
+    recruiterId: z.string().trim().min(1, 'recruiterId is required').optional(),
+    startAt: z.string().optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    durationMinutes: z.coerce.number().positive().optional().default(30),
+    title: z.string().trim().max(200).optional().default('HireConnect Interview'),
+    description: z.string().trim().max(2000).optional().default(''),
+    meetingType: z.enum(['interview', 'screening', 'introductory', 'technical', 'general']).default('interview'),
+    meetingMode: z.enum(['online', 'in_person']).default('online'),
+    meetingLink: z.string().trim().optional().default(''),
+    location: z.string().trim().max(300).optional().default(''),
+    candidateNotes: z.string().trim().max(1000).optional().default(''),
+    recruiterNotes: z.string().trim().max(3000).optional().default(''),
+    applicationId: z.string().trim().optional(),
+    jobId: z.string().trim().optional(),
 
-  // Legacy booking form fields compatibility
-  name: z.string().trim().optional(),
-  email: z.string().email().optional(),
-  phone: z.string().trim().optional(),
-  company: z.string().trim().optional(),
-  purpose: z.string().trim().optional(),
-  date: z.string().optional(),
-  timeSlot: z.string().optional(),
-  timezone: z.string().optional(),
-  agenda: z.string().trim().optional()
-});
+    // Legacy booking form fields compatibility
+    name: z.string().trim().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().trim().optional(),
+    company: z.string().trim().optional(),
+    purpose: z.string().trim().optional(),
+    date: z.string().optional(),
+    timeSlot: z.string().optional(),
+    timezone: z.string().optional(),
+    timeZone: z.string().optional(),
+    agenda: z.string().trim().optional()
+  })
+);
 
 const rescheduleMeetingSchema = z.object({
   newStartAt: z.string().datetime({ message: 'newStartAt must be a valid ISO 8601 date string' }).optional(),

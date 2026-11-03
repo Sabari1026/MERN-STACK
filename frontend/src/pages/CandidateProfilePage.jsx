@@ -6,6 +6,17 @@ import { profileService } from '../services/profileService';
 import { applicationService } from '../services/applicationService';
 import { jobService } from '../services/jobService';
 
+const normalizeSkillList = (list) => {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((s) => {
+      if (typeof s === 'string') return s.trim();
+      if (s && typeof s === 'object') return (s.name || s.title || '').trim();
+      return '';
+    })
+    .filter(Boolean);
+};
+
 export function CandidateProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile, updateProfileState, refreshUser } = useAuth();
@@ -17,6 +28,7 @@ export function CandidateProfilePage() {
   const [myApplications, setMyApplications] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Form State
   const [headline, setHeadline] = useState(profile?.headline || '');
@@ -26,13 +38,24 @@ export function CandidateProfilePage() {
   const [isDiscoverable, setIsDiscoverable] = useState(
     profile?.isDiscoverable ?? profile?.privacy?.isDiscoverable ?? profile?.discoverability ?? false
   );
-  const [skills, setSkills] = useState(profile?.skills || []);
+  const [skills, setSkills] = useState(normalizeSkillList(profile?.skills));
   const [newSkill, setNewSkill] = useState('');
 
   // Experience state
   const [experiences, setExperiences] = useState(profile?.experience || []);
+  const [showAddExp, setShowAddExp] = useState(false);
+  const [expCompany, setExpCompany] = useState('');
+  const [expRole, setExpRole] = useState('');
+  const [expDates, setExpDates] = useState('');
+  const [expDescription, setExpDescription] = useState('');
+
   // Education state
   const [education, setEducation] = useState(profile?.education || []);
+  const [showAddEdu, setShowAddEdu] = useState(false);
+  const [eduInstitution, setEduInstitution] = useState('');
+  const [eduDegree, setEduDegree] = useState('');
+  const [eduField, setEduField] = useState('');
+  const [eduYear, setEduYear] = useState('');
 
   // Sync state when profile loads
   useEffect(() => {
@@ -44,11 +67,34 @@ export function CandidateProfilePage() {
       setIsDiscoverable(
         profile.isDiscoverable ?? profile.privacy?.isDiscoverable ?? profile.discoverability ?? false
       );
-      setSkills(profile.skills || []);
-      setExperiences(profile.experience || []);
-      setEducation(profile.education || []);
+      setSkills(normalizeSkillList(profile.skills));
+      setExperiences(Array.isArray(profile.experience) ? profile.experience : []);
+      setEducation(Array.isArray(profile.education) ? profile.education : []);
     }
   }, [profile]);
+
+  // Fetch fresh candidate profile from API on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadProfile() {
+      setProfileLoading(true);
+      try {
+        const res = await profileService.getCandidateProfile();
+        const freshProfile = res?.data?.profile || res?.profile;
+        if (isMounted && freshProfile && typeof freshProfile === 'object') {
+          updateProfileState(freshProfile);
+        }
+      } catch (err) {
+        // Silently fallback to cached AuthContext profile
+      } finally {
+        if (isMounted) setProfileLoading(false);
+      }
+    }
+    loadProfile();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Load applications or saved jobs when tab switches
   useEffect(() => {
@@ -89,9 +135,13 @@ export function CandidateProfilePage() {
   };
 
   const handleSaveProfile = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
     try {
+      const cleanSkills = skills
+        .map((s) => (typeof s === 'string' ? s.trim() : (s?.name || '').trim()))
+        .filter(Boolean);
+
       const res = await profileService.updateCandidateProfile({
         headline: headline.trim(),
         bio: bio.trim(),
@@ -103,7 +153,7 @@ export function CandidateProfilePage() {
         privacy: {
           isDiscoverable
         },
-        skills,
+        skills: cleanSkills,
         experience: experiences,
         education
       });
@@ -120,14 +170,76 @@ export function CandidateProfilePage() {
 
   const handleAddSkill = () => {
     const trimmed = newSkill.trim();
-    if (trimmed && !skills.includes(trimmed)) {
+    if (
+      trimmed &&
+      !skills.some((s) => (typeof s === 'string' ? s : s?.name || '').toLowerCase() === trimmed.toLowerCase())
+    ) {
       setSkills([...skills, trimmed]);
       setNewSkill('');
     }
   };
 
   const handleRemoveSkill = (skillToRemove) => {
-    setSkills(skills.filter((s) => s !== skillToRemove));
+    const targetName = typeof skillToRemove === 'string' ? skillToRemove : (skillToRemove?.name || '');
+    setSkills(
+      skills.filter((s) => {
+        const sName = typeof s === 'string' ? s : (s?.name || '');
+        return sName.toLowerCase() !== targetName.toLowerCase();
+      })
+    );
+  };
+
+  // Experience handlers
+  const handleAddExperience = () => {
+    if (!expCompany.trim() || !expRole.trim()) {
+      toast.error('Please enter both Company and Role title.');
+      return;
+    }
+    const newEntry = {
+      company: expCompany.trim(),
+      employer: expCompany.trim(),
+      title: expRole.trim(),
+      jobTitle: expRole.trim(),
+      dates: expDates.trim() || '2023 - Present',
+      description: expDescription.trim()
+    };
+    setExperiences([...experiences, newEntry]);
+    setExpCompany('');
+    setExpRole('');
+    setExpDates('');
+    setExpDescription('');
+    setShowAddExp(false);
+    toast.success('Experience added! Click "Save Profile Changes" to persist.');
+  };
+
+  const handleRemoveExperience = (idx) => {
+    setExperiences(experiences.filter((_, i) => i !== idx));
+  };
+
+  // Education handlers
+  const handleAddEducation = () => {
+    if (!eduInstitution.trim()) {
+      toast.error('Please enter institution name.');
+      return;
+    }
+    const newEntry = {
+      institution: eduInstitution.trim(),
+      degree: eduDegree.trim() || 'Bachelor of Technology',
+      qualification: eduDegree.trim() || 'Bachelor of Technology',
+      fieldOfStudy: eduField.trim() || 'Computer Science',
+      year: eduYear.trim() || '2024'
+    };
+    setEducation([...education, newEntry]);
+    setEduInstitution('');
+    setEduDegree('');
+    setEduField('');
+    setEduYear('');
+    setShowAddEdu(false);
+    toast.success('Education added! Click "Save Profile Changes" to persist.');
+  };
+
+  const handleRemoveEducation = (idx) => {
+    setEducation(education.filter((_, i) => i !== idx));
   };
 
   // Avatar upload
@@ -195,7 +307,7 @@ export function CandidateProfilePage() {
     }
   };
 
-  const completeness = profile?.completeness ?? 65;
+  const completeness = profile?.completeness ?? (skills.length > 0 && headline ? 85 : 55);
 
   return (
     <div className="page-container">
@@ -211,7 +323,13 @@ export function CandidateProfilePage() {
                     <img
                       src={user.avatarUrl}
                       alt={user.name}
-                      style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-medium)' }}
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '2px solid var(--border-medium)'
+                      }}
                     />
                   ) : (
                     <div
@@ -248,7 +366,12 @@ export function CandidateProfilePage() {
                     title="Change Avatar"
                   >
                     📷
-                    <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleAvatarUpload} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={handleAvatarUpload}
+                    />
                   </label>
                 </div>
 
@@ -257,10 +380,10 @@ export function CandidateProfilePage() {
                     {user?.name || 'Candidate Profile'}
                   </h1>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '15px', marginBottom: '8px' }}>
-                    {profile?.headline || 'Add your professional headline'}
+                    {profile?.headline || headline || 'Add your professional headline'}
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span className="badge badge-purple">Candidate</span>
+                    <span className="badge badge-purple">{user?.role ? user.role.toUpperCase() : 'CANDIDATE'}</span>
                     <span className={`badge ${isDiscoverable ? 'badge-mint' : 'badge-gray'}`}>
                       {isDiscoverable ? '✓ Discoverable by Recruiters' : '🔒 Private (Unlisted)'}
                     </span>
@@ -323,6 +446,12 @@ export function CandidateProfilePage() {
           {activeTab === 'profile' && (
             <div className="surface-card" style={{ padding: '32px' }}>
               <form onSubmit={handleSaveProfile}>
+                {profileLoading && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: 'var(--text-muted)', fontSize: '14px' }}>
+                    <span className="spinner" style={{ width: '14px', height: '14px' }} />
+                    <span>Refreshing profile data...</span>
+                  </div>
+                )}
                 <div className="grid-12">
                   <div className="col-12 form-group">
                     <label className="form-label">Professional Headline</label>
@@ -370,7 +499,7 @@ export function CandidateProfilePage() {
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                       <input
                         type="text"
-                        placeholder="Add a technology (e.g. Node.js, Go, MongoDB, AWS)..."
+                        placeholder="Add a technology (e.g. Node.js, Go, MongoDB, AWS, React)..."
                         value={newSkill}
                         onChange={(e) => setNewSkill(e.target.value)}
                         onKeyDown={(e) => {
@@ -386,23 +515,259 @@ export function CandidateProfilePage() {
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {skills.map((skill, idx) => (
-                        <span key={idx} className="badge badge-purple" style={{ padding: '6px 12px', fontSize: '13px' }}>
-                          {skill}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSkill(skill)}
-                            style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', marginLeft: '6px' }}
+                      {skills.map((skill, idx) => {
+                        const skillLabel = typeof skill === 'string' ? skill : (skill?.name || '');
+                        if (!skillLabel) return null;
+                        return (
+                          <span
+                            key={idx}
+                            className="badge badge-purple"
+                            style={{ padding: '6px 12px', fontSize: '13px' }}
                           >
-                            ×
-                          </button>
+                            {skillLabel}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSkill(skillLabel)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'inherit',
+                                cursor: 'pointer',
+                                marginLeft: '6px'
+                              }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })}
+                      {skills.length === 0 && (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                          No skills added yet. Type a technology above and click Add.
                         </span>
-                      ))}
+                      )}
                     </div>
                   </div>
 
+                  {/* Work Experience Section */}
+                  <div className="col-12" style={{ marginTop: '16px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h4 className="h4">Work Experience ({experiences.length})</h4>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        onClick={() => setShowAddExp(!showAddExp)}
+                      >
+                        <span>{showAddExp ? 'Cancel' : '+ Add Role'}</span>
+                      </button>
+                    </div>
+
+                    {showAddExp && (
+                      <div style={{ background: 'var(--bg-elevated)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid var(--border-medium)' }}>
+                        <div className="grid-12">
+                          <div className="col-6 form-group">
+                            <label className="form-label">Company / Employer</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Razorpay, Swiggy"
+                              value={expCompany}
+                              onChange={(e) => setExpCompany(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-6 form-group">
+                            <label className="form-label">Role Title</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Senior Backend Engineer"
+                              value={expRole}
+                              onChange={(e) => setExpRole(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-12 form-group">
+                            <label className="form-label">Timeline / Dates</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Jan 2022 — Present"
+                              value={expDates}
+                              onChange={(e) => setExpDates(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-12 form-group">
+                            <label className="form-label">Responsibilities & Achievements</label>
+                            <textarea
+                              rows={2}
+                              placeholder="Highlights of key accomplishments, scaling milestones, technologies used..."
+                              value={expDescription}
+                              onChange={(e) => setExpDescription(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-12">
+                            <button type="button" className="btn-primary btn-sm" onClick={handleAddExperience}>
+                              <span>Save Experience Item</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {experiences.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+                        No work experience listed yet.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                        {experiences.map((exp, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              padding: '16px',
+                              borderRadius: 'var(--radius-sm)',
+                              background: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start'
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '16px', color: 'var(--text-primary)' }}>
+                                {exp.jobTitle || exp.title || 'Role'} • {exp.employer || exp.company || 'Company'}
+                              </div>
+                              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                                📅 {exp.dates || exp.startDate || 'Recent'}
+                              </div>
+                              {exp.description && (
+                                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
+                                  {exp.description}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-danger btn-sm"
+                              onClick={() => handleRemoveExperience(idx)}
+                              style={{ padding: '4px 8px', fontSize: '12px' }}
+                            >
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Education Section */}
+                  <div className="col-12" style={{ marginTop: '16px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h4 className="h4">Education ({education.length})</h4>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        onClick={() => setShowAddEdu(!showAddEdu)}
+                      >
+                        <span>{showAddEdu ? 'Cancel' : '+ Add Education'}</span>
+                      </button>
+                    </div>
+
+                    {showAddEdu && (
+                      <div style={{ background: 'var(--bg-elevated)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid var(--border-medium)' }}>
+                        <div className="grid-12">
+                          <div className="col-6 form-group">
+                            <label className="form-label">Institution / University</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. National Institute of Technology"
+                              value={eduInstitution}
+                              onChange={(e) => setEduInstitution(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-6 form-group">
+                            <label className="form-label">Degree</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. B.Tech in Computer Science"
+                              value={eduDegree}
+                              onChange={(e) => setEduDegree(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-6 form-group">
+                            <label className="form-label">Field of Study</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Computer Science & Engineering"
+                              value={eduField}
+                              onChange={(e) => setEduField(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-6 form-group">
+                            <label className="form-label">Graduation Year</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. 2024"
+                              value={eduYear}
+                              onChange={(e) => setEduYear(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-12">
+                            <button type="button" className="btn-primary btn-sm" onClick={handleAddEducation}>
+                              <span>Save Education Item</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {education.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+                        No education records listed yet.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                        {education.map((edu, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              padding: '16px',
+                              borderRadius: 'var(--radius-sm)',
+                              background: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start'
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '16px', color: 'var(--text-primary)' }}>
+                                {edu.degree || edu.qualification || 'Degree'} • {edu.institution || 'University'}
+                              </div>
+                              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                                🎓 {edu.fieldOfStudy || ''} {edu.year ? `(${edu.year})` : ''}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-danger btn-sm"
+                              onClick={() => handleRemoveEducation(idx)}
+                              style={{ padding: '4px 8px', fontSize: '12px' }}
+                            >
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Discoverability Toggle */}
-                  <div className="col-12" style={{ padding: '16px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', marginBottom: '24px' }}>
+                  <div
+                    className="col-12"
+                    style={{
+                      padding: '16px 0',
+                      borderTop: '1px solid var(--border-subtle)',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      marginBottom: '24px'
+                    }}
+                  >
                     <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
@@ -489,7 +854,12 @@ export function CandidateProfilePage() {
                   </p>
                   <label className="btn-primary" style={{ display: 'inline-flex', cursor: 'pointer' }}>
                     <span>Select Resume File</span>
-                    <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: 'none' }} onChange={handleResumeUpload} />
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      style={{ display: 'none' }}
+                      onChange={handleResumeUpload}
+                    />
                   </label>
                 </div>
               )}
@@ -532,7 +902,7 @@ export function CandidateProfilePage() {
                             </Link>
                           </td>
                           <td>{app.company?.name || app.job?.companyName || 'Verified Company'}</td>
-                          <td>{new Date(app.createdAt).toLocaleDateString()}</td>
+                          <td>{new Date(app.createdAt || app.submittedAt || Date.now()).toLocaleDateString()}</td>
                           <td>
                             <span
                               className={`badge ${
@@ -545,7 +915,7 @@ export function CandidateProfilePage() {
                                   : 'badge-gray'
                               }`}
                             >
-                              {app.status ? app.status.toUpperCase() : 'APPLIED'}
+                              {app.status ? app.status.toUpperCase().replace('_', ' ') : 'UNDER PROCESSING'}
                             </span>
                           </td>
                         </tr>

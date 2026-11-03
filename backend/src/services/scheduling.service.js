@@ -308,7 +308,9 @@ class SchedulingService {
           } else {
             allSlots.push({
               startAt: slotStartInstant.toISOString(),
+              startTime: slotStartInstant.toISOString(),
               endAt: slotEndInstant.toISOString(),
+              endTime: slotEndInstant.toISOString(),
               timeSlot: slotLabel,
               date: dateStr,
               durationMinutes
@@ -340,18 +342,25 @@ class SchedulingService {
    * Concurrency-safe, atomic interview booking endpoint
    */
   async bookMeeting(candidateUser, bookingData) {
-    if (!candidateUser) throw ApiError.unauthorized('Candidate authentication required.');
-    const candidateId = candidateUser._id || candidateUser.id;
+    if (!candidateUser) throw ApiError.unauthorized('Authentication required.');
+    const callerId = candidateUser._id || candidateUser.id;
 
-    // Resolve recruiter
+    // Resolve recruiter and candidate based on caller role
     let recruiterId = bookingData.recruiterId;
-    if (!recruiterId) {
-      // Fallback: look for seed recruiter or company recruiter
-      const recUser = await User.findOne({ role: 'recruiter' });
-      if (recUser) {
-        recruiterId = recUser._id.toString();
-      } else {
-        throw ApiError.badRequest('recruiterId is required.');
+    let candidateId = callerId;
+
+    if (candidateUser.role === 'recruiter') {
+      recruiterId = callerId;
+      candidateId = bookingData.candidateId || bookingData.candidate || callerId;
+    } else {
+      if (!recruiterId || recruiterId.toString() === callerId.toString()) {
+        // Fallback: look for seed recruiter or any active recruiter
+        const recUser = await User.findOne({ role: 'recruiter' });
+        if (recUser) {
+          recruiterId = recUser._id.toString();
+        } else {
+          throw ApiError.badRequest('recruiterId is required.');
+        }
       }
     }
 
@@ -364,16 +373,24 @@ class SchedulingService {
     let startAt;
     let endAt;
     const durationMinutes = Number(bookingData.durationMinutes) || 30;
+    const rawStart = bookingData.startAt || bookingData.startTime;
 
-    if (bookingData.startAt) {
-      startAt = new Date(bookingData.startAt);
+    if (rawStart) {
+      startAt = new Date(rawStart);
       if (isNaN(startAt.getTime())) {
         throw ApiError.badRequest('Invalid startAt timestamp.');
       }
-      endAt = new Date(startAt.getTime() + durationMinutes * 60000);
+      if (bookingData.endAt || bookingData.endTime) {
+        endAt = new Date(bookingData.endAt || bookingData.endTime);
+        if (isNaN(endAt.getTime()) || endAt <= startAt) {
+          endAt = new Date(startAt.getTime() + durationMinutes * 60000);
+        }
+      } else {
+        endAt = new Date(startAt.getTime() + durationMinutes * 60000);
+      }
     } else if (bookingData.date && bookingData.timeSlot) {
       // Legacy format: e.g. "10:00 AM - 10:15 AM"
-      const timeZone = bookingData.timezone || 'Asia/Kolkata';
+      const timeZone = bookingData.timezone || bookingData.timeZone || 'Asia/Kolkata';
       const rawTime = bookingData.timeSlot.split(' - ')[0].trim(); // "10:00 AM"
       const timeMatch = rawTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
       if (timeMatch) {
@@ -389,7 +406,7 @@ class SchedulingService {
         throw ApiError.badRequest('Invalid timeSlot format.');
       }
     } else {
-      throw ApiError.badRequest('startAt or date + timeSlot is required.');
+      throw ApiError.badRequest('startAt, startTime, or date + timeSlot is required.');
     }
 
     // Acquire mutex lock for this recruiter to serialize concurrent booking checks
