@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: hireconnect-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ENABLE_BACKGROUND_WORKER
+        value: "true"
+      - key: STORAGE_PROVIDER
+        value: local
+      - key: UPLOAD_DIR
+        value: ./uploads
+      - key: COOKIE_SAME_SITE
+        value: none
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 7d
+      - key: SMTP_HOST
+        value: smtp.resend.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USER
+        value: resend
+      - key: EMAIL_FROM
+        value: HireConnect <onboarding@resend.dev>
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: COOKIE_SECRET
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
