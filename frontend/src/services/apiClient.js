@@ -8,8 +8,13 @@ import axios from 'axios';
 
 // Resolve base URL from Vite env or fallback to local proxy / port 5000
 const getBaseUrl = () => {
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    if (import.meta.env.VITE_API_BASE_URL) {
+      return import.meta.env.VITE_API_BASE_URL;
+    }
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
   }
   return 'http://localhost:5000/api';
 };
