@@ -21,7 +21,7 @@ const getBaseUrl = () => {
 
 export const apiClient = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 15000,
+  timeout: 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

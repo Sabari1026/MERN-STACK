@@ -50,14 +50,13 @@ const corsOptions = {
     if (allowedOrigins.includes('*')) return callback(null, true);
 
     const isExplicitlyAllowed = allowedOrigins.includes(origin);
-    const isLocalDev =
-      env.NODE_ENV !== 'production' &&
-      (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
+    const isLocalHost =
+      origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
 
     // Allow any *.vercel.app origin to support preview deployments
     const isVercelPreview = origin.endsWith('.vercel.app');
 
-    if (isExplicitlyAllowed || isLocalDev || isVercelPreview) {
+    if (isExplicitlyAllowed || isLocalHost || isVercelPreview) {
       return callback(null, true);
     }
 
