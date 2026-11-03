@@ -80,6 +80,19 @@ app.use(mongoSanitize);
 app.use('/api', apiLimiter);
 app.use('/api', apiRoutes);
 
+// Root ping and cloud orchestration health probes (e.g. Render / AWS / Kubernetes)
+app.get(['/', '/healthz'], (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'HireConnect Backend is live and healthy',
+    environment: env.NODE_ENV,
+    apiBase: '/api',
+    healthCheck: '/api/health',
+    timestamp: new Date().toISOString()
+  });
+});
+app.head(['/', '/healthz'], (req, res) => res.status(200).end());
+
 // Direct mount alias for orchestration health probes (e.g. Docker/Kubernetes hitting /health)
 app.use('/health', healthRoutes);
 
