@@ -8,14 +8,19 @@ import axios from 'axios';
 
 // Resolve base URL from Vite env or fallback to local proxy / port 5000
 const getBaseUrl = () => {
+  let url = null;
   if (typeof import.meta !== 'undefined' && import.meta.env) {
-    if (import.meta.env.VITE_API_BASE_URL) {
-      return import.meta.env.VITE_API_BASE_URL;
-    }
-    if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
+    url = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
   }
+
+  if (url && typeof url === 'string' && url.trim()) {
+    let clean = url.trim().replace(/\/+$/, '');
+    if (!clean.endsWith('/api')) {
+      clean += '/api';
+    }
+    return clean;
+  }
+
   return 'http://localhost:5000/api';
 };
 
