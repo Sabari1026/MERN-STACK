@@ -94,6 +94,22 @@ const getJobApplications = asyncHandler(async (req, res) => {
   });
 });
 
+const getRecruiterApplications = asyncHandler(async (req, res) => {
+  const filters = searchApplicationsSchema.parse(req.query);
+  if (req.query.jobId) filters.jobId = req.query.jobId;
+  const result = await applicationService.getRecruiterApplications(req.user, filters);
+
+  return res.status(200).json({
+    success: true,
+    data: result,
+    applications: result.applications,
+    total: result.total,
+    page: result.page,
+    limit: result.limit,
+    totalPages: result.totalPages
+  });
+});
+
 const updateApplicationStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const parsed = updateStatusSchema.parse(req.body);
@@ -132,6 +148,7 @@ module.exports = {
   getApplicationById,
   withdrawApplication,
   getJobApplications,
+  getRecruiterApplications,
   updateApplicationStatus,
   addNote
 };

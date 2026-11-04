@@ -23,7 +23,11 @@ const applyJobSchema = z.object({
 
 const updateStatusSchema = z.object({
   status: z.preprocess(
-    (val) => (val === 'interviewing' ? 'interview' : val),
+    (val) => {
+      if (val === 'interviewing') return 'interview';
+      if (val === 'reviewed') return 'under_review';
+      return val;
+    },
     z.enum(
       ['applied', 'under_review', 'shortlisted', 'interview', 'offered', 'rejected', 'withdrawn'],
       { required_error: 'Status is required' }

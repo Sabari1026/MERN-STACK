@@ -371,7 +371,7 @@ class ApplicationService {
 
     const query = { job: targetJobId };
     if (options.status && options.status !== 'all') {
-      query.status = options.status;
+      query.status = options.status === 'reviewed' ? 'under_review' : options.status;
     }
 
     const total = await Application.countDocuments(query);
@@ -379,7 +379,75 @@ class ApplicationService {
       .sort({ submittedAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('candidate');
+      .populate('candidate')
+      .populate('job');
+
+    const totalPages = Math.ceil(total / limit) || 1;
+    const applications = records.map((app) => (app.toRecruiterJSON ? app.toRecruiterJSON() : app));
+
+    return {
+      applications,
+      total,
+      page,
+      limit,
+      totalPages
+    };
+  }
+
+  /**
+   * Recruiter lists all applicants across their organization or filtered by job.
+   */
+  async getRecruiterApplications(recruiterUser, options = {}) {
+    const userId = recruiterUser._id || recruiterUser.id;
+
+    // Resolve companies recruiter has access to
+    const memberships = await CompanyMembership.find({ user: userId, status: 'active' });
+    const companyIds = memberships.map((m) => (m.company?._id || m.company?.id || m.company).toString());
+
+    const recProfile = await RecruiterProfile.findOne({ user: userId });
+    if (recProfile && recProfile.company) {
+      const cId = (recProfile.company?._id || recProfile.company).toString();
+      if (!companyIds.includes(cId)) companyIds.push(cId);
+    }
+
+    // Also include jobs created directly by this recruiter
+    const userJobs = await Job.find({ createdBy: userId }).select('_id');
+    const userJobIds = userJobs.map((j) => (j._id || j.id).toString());
+
+    let query = {};
+    if (recruiterUser.role === 'admin') {
+      query = {};
+    } else {
+      query = {
+        $or: [
+          { company: { $in: companyIds } },
+          { job: { $in: userJobIds } }
+        ]
+      };
+    }
+
+    if (options.jobId && options.jobId !== 'all') {
+      let targetJob = await Job.findById(options.jobId);
+      if (!targetJob) targetJob = await Job.findOne({ slug: options.jobId });
+      query.job = targetJob ? (targetJob._id || targetJob.id) : options.jobId;
+    }
+
+    if (options.status && options.status !== 'all') {
+      const normalizedStatus = options.status === 'reviewed' ? 'under_review' : options.status;
+      query.status = normalizedStatus;
+    }
+
+    const page = Math.max(1, parseInt(options.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(options.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+
+    const total = await Application.countDocuments(query);
+    const records = await Application.find(query)
+      .sort({ submittedAt: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('candidate')
+      .populate('job');
 
     const totalPages = Math.ceil(total / limit) || 1;
     const applications = records.map((app) => (app.toRecruiterJSON ? app.toRecruiterJSON() : app));

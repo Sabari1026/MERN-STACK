@@ -18,9 +18,19 @@ router.post('/', recruiterJobController.createJob);
 router.get('/', recruiterJobController.getRecruiterJobs);
 router.get('/:id', recruiterJobController.getJobById);
 router.patch('/:id', recruiterJobController.updateJob);
-router.patch('/:id/publish', recruiterJobController.publishJob);
-router.patch('/:id/pause', recruiterJobController.pauseJob);
-router.patch('/:id/close', recruiterJobController.closeJob);
+
+// Support both PATCH and POST for publication state transitions
+router.route('/:id/publish')
+  .patch(recruiterJobController.publishJob)
+  .post(recruiterJobController.publishJob);
+
+router.route('/:id/pause')
+  .patch(recruiterJobController.pauseJob)
+  .post(recruiterJobController.pauseJob);
+
+router.route('/:id/close')
+  .patch(recruiterJobController.closeJob)
+  .post(recruiterJobController.closeJob);
 
 // Recruiter Applicant Management for Job
 router.get('/:jobId/applications', applicationController.getJobApplications);

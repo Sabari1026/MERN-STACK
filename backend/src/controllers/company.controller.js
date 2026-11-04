@@ -83,6 +83,30 @@ class CompanyController {
   });
 
   /**
+   * Get active jobs for a company by slug or ID.
+   * GET /api/companies/:slugOrId/jobs
+   */
+  getCompanyJobs = asyncHandler(async (req, res) => {
+    const { slugOrId } = req.params;
+    const company = await companyService.getCompanyBySlugOrId(slugOrId);
+
+    if (!company) {
+      throw ApiError.notFound('Company not found.');
+    }
+
+    const Job = require('../models/job.model');
+    const compId = company._id || company.id;
+    const jobs = await Job.find({ company: compId, status: 'published' }).sort({ publishedAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      jobs: jobs || [],
+      total: jobs.length,
+      data: { jobs: jobs || [] }
+    });
+  });
+
+  /**
    * Update permitted company fields.
    * PATCH /api/companies/:id (and PUT /api/companies/:id)
    */

@@ -14,7 +14,7 @@ export function CompanyDiscoveryPage() {
     async function loadCompanies() {
       setLoading(true);
       try {
-        const params = { limit: 24 };
+        const params = { limit: 60 };
         if (search) params.search = search;
         if (industry) params.industry = industry;
 

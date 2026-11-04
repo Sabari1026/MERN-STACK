@@ -47,6 +47,17 @@ export function RecruiterDashboardPage() {
   const [companySize, setCompanySize] = useState(company?.size || '50-200');
   const [savingCompany, setSavingCompany] = useState(false);
 
+  // Sync company details when auth state resolves
+  useEffect(() => {
+    if (company) {
+      setCompanyName(company.name || '');
+      setCompanyWebsite(company.website || '');
+      setCompanyDescription(company.description || '');
+      setCompanyIndustry(company.industry || 'Software & Internet');
+      setCompanySize(company.size || company.companySize || '50-200');
+    }
+  }, [company]);
+
   // Analytics State
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
@@ -130,7 +141,8 @@ export function RecruiterDashboardPage() {
         skills: skillsArray,
         salaryMin: jobForm.salaryMin ? Number(jobForm.salaryMin) : undefined,
         salaryMax: jobForm.salaryMax ? Number(jobForm.salaryMax) : undefined,
-        salaryCurrency: jobForm.salaryCurrency
+        salaryCurrency: jobForm.salaryCurrency,
+        status: 'published'
       });
 
       toast.success('Job opening published successfully!');
@@ -219,21 +231,28 @@ export function RecruiterDashboardPage() {
   // Company Updates
   const handleSaveCompany = async (e) => {
     e.preventDefault();
-    if (!company?._id && !company?.id) {
-      toast.error('No company associated with recruiter account.');
-      return;
-    }
     setSavingCompany(true);
     try {
-      const companyId = company._id || company.id;
-      await companyService.updateCompany(companyId, {
-        name: companyName.trim(),
-        website: companyWebsite.trim(),
-        description: companyDescription.trim(),
-        industry: companyIndustry,
-        size: companySize
-      });
-      toast.success('Company profile updated successfully!');
+      if (!company?._id && !company?.id) {
+        await companyService.createCompany({
+          name: companyName.trim(),
+          website: companyWebsite.trim(),
+          description: companyDescription.trim(),
+          industry: companyIndustry,
+          size: companySize
+        });
+        toast.success('Company created and linked to your recruiter profile!');
+      } else {
+        const companyId = company._id || company.id;
+        await companyService.updateCompany(companyId, {
+          name: companyName.trim(),
+          website: companyWebsite.trim(),
+          description: companyDescription.trim(),
+          industry: companyIndustry,
+          size: companySize
+        });
+        toast.success('Company profile updated successfully!');
+      }
       await refreshUser();
     } catch (err) {
       toast.error(err.message || 'Failed to update company details.');
@@ -400,7 +419,7 @@ export function RecruiterDashboardPage() {
                   <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: '160px' }}>
                     <option value="">All Statuses</option>
                     <option value="applied">Applied</option>
-                    <option value="reviewed">Reviewed</option>
+                    <option value="under_review">In Review</option>
                     <option value="shortlisted">Shortlisted</option>
                     <option value="interview">Interview</option>
                     <option value="offered">Offered</option>
@@ -460,7 +479,7 @@ export function RecruiterDashboardPage() {
                                 style={{ width: '150px', padding: '6px 10px', fontSize: '13px' }}
                               >
                                 <option value="applied">Applied</option>
-                                <option value="reviewed">Reviewed</option>
+                                <option value="under_review">In Review</option>
                                 <option value="shortlisted">Shortlisted</option>
                                 <option value="interview">Interview</option>
                                 <option value="offered">Offered</option>

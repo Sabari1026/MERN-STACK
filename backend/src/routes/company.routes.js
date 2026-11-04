@@ -61,6 +61,9 @@ router.get('/:companyId/analytics', authenticate, analyticsController.getCompany
 // Public company details by slug or ID
 router.get('/:slugOrId', companyController.getCompanyDetails);
 
+// Public company active jobs
+router.get('/:slugOrId/jobs', companyController.getCompanyJobs);
+
 // ============================================================================
 // PROTECTED COMPANY OPERATIONS (Requires Company Membership)
 // ============================================================================

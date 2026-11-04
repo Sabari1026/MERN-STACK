@@ -13,7 +13,17 @@ router.use(authenticate);
 
 // Candidate application submission & history
 router.post(['/', '/apply'], requireRole('candidate', 'employee'), applicationController.applyToJob);
-router.get(['/', '/me', '/my'], requireRole('candidate', 'employee'), applicationController.getMyApplications);
+
+// Recruiter pipeline applications (all applications across recruiter's organization)
+router.get('/recruiter', requireRole('recruiter', 'admin'), applicationController.getRecruiterApplications);
+
+// Role-aware root listing: recruiters get organizational pipeline, candidates get their own applications
+router.get(['/', '/me', '/my'], (req, res, next) => {
+  if (req.user?.role === 'recruiter' || req.baseUrl.includes('recruiter')) {
+    return applicationController.getRecruiterApplications(req, res, next);
+  }
+  return applicationController.getMyApplications(req, res, next);
+});
 
 // Recruiter applicant listing for a specific job
 router.get('/job/:jobId', requireRole('recruiter', 'admin'), applicationController.getJobApplications);

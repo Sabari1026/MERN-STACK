@@ -175,8 +175,8 @@ class CompanyService {
     const cleanPage = Math.max(1, parseInt(page, 10) || 1);
     const cleanLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 12));
 
-    // Fetch candidate records
-    const all = await Company.find();
+    // Fetch candidate records sorted by newest first
+    const all = await Company.find().sort({ createdAt: -1 });
     let filtered = all.filter((comp) => {
       // Search term
       if (queryTerm) {

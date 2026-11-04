@@ -28,6 +28,16 @@ export function FindJobsPage() {
     jobType: searchParams.get('jobType') || ''
   });
 
+  // Sync URL search params when navigation occurs
+  useEffect(() => {
+    setFilters({
+      keyword: searchParams.get('keyword') || '',
+      location: searchParams.get('location') || '',
+      workMode: searchParams.get('workMode') || '',
+      jobType: searchParams.get('jobType') || ''
+    });
+  }, [searchParams]);
+
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
