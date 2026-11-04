@@ -96,6 +96,23 @@ async function startServer() {
       if (env.NODE_ENV !== 'test' && env.ENABLE_BACKGROUND_WORKER) {
         reminderService.startScheduler();
       }
+
+      // Verify SMTP service connection asynchronously if configured
+      if (env.NODE_ENV !== 'test') {
+        const emailService = require('./services/email.service');
+        emailService
+          .verifyConnection()
+          .then((res) => {
+            if (res.success) {
+              logger.info('[EmailService] SMTP verification succeeded during startup.');
+            } else {
+              logger.warn(`[EmailService] SMTP status on startup: ${res.message}`);
+            }
+          })
+          .catch((err) => {
+            logger.warn(`[EmailService] Startup SMTP check encountered an issue: ${err.message}`);
+          });
+      }
     });
 
     server.on('error', (err) => {

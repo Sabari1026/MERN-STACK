@@ -129,6 +129,32 @@ const register = asyncHandler(async (req, res) => {
 
   logger.info(`[Auth] Registered new ${role} account: ${user.email} (ID: ${user._id})`);
 
+  // Asynchronously dispatch welcome email (without blocking registration)
+  try {
+    const emailService = require('../services/email.service');
+    const emailTemplates = require('../templates/emails/emailTemplates');
+    const frontendUrl = (Array.isArray(env.FRONTEND_URL) ? env.FRONTEND_URL[0] : env.FRONTEND_URL) || 'https://hireconnect.io';
+    const actionUrl = role === 'recruiter' ? `${frontendUrl}/recruiter/dashboard` : `${frontendUrl}/jobs`;
+    const welcomeMail = emailTemplates.welcome({
+      recipientName: user.name,
+      role: user.role,
+      actionUrl
+    });
+
+    emailService
+      .sendEmail({
+        to: user.email,
+        subject: welcomeMail.subject,
+        html: welcomeMail.html,
+        text: welcomeMail.text
+      })
+      .catch((emailErr) => {
+        logger.warn(`[Auth] Welcome email async dispatch failed for ${user.email}: ${emailErr.message}`);
+      });
+  } catch (emailErr) {
+    logger.warn(`[Auth] Welcome email scheduling error for ${user.email}: ${emailErr.message}`);
+  }
+
   return res.status(201).json({
     success: true,
     message: 'Account created successfully',

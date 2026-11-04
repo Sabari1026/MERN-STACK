@@ -1,38 +1,32 @@
 /**
- * Email Service for HireConnect (Phase 9)
- * Provider abstraction supporting genuine SMTP delivery via Nodemailer,
- * transactional outbox processing with exponential backoff retries,
- * and test/sandboxed delivery tracking.
+ * Centralized Email Service for HireConnect
+ * Genuine SMTP delivery via Nodemailer (e.g. Gmail SMTP, custom SMTP),
+ * dynamic authenticated recipient routing, zero sandbox redirection,
+ * and reliable transactional outbox processing.
  */
 
 const nodemailer = require('nodemailer');
-const https = require('https');
 const logger = require('../utils/logger');
 const NotificationOutbox = require('../models/notificationOutbox.model');
+
+// Basic RFC 5322 compliant email regex for runtime safety
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 class EmailService {
   constructor() {
     this.transporter = null;
-    this.isResendHttp = false;
-    this.resendApiKey = null;
     this.isConfigured = false;
-    this.sentEmails = []; // In-memory history for testing and audit
+    this.sentEmails = []; // In-memory audit trail for testing and inspection
     this.hasWarnedUnconfigured = false;
 
     this.initTransporter();
   }
 
   /**
-   * Initialize Nodemailer transport from environment configuration
+   * Initialize Nodemailer transport using standard SMTP environment variables
    */
   initTransporter() {
-    const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-    const user = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS;
-    const port = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-
-    // In automated test mode, use test/mock transport to prevent accidental network leaks
+    // In automated test mode (vitest / jest), use test adapter to prevent network calls
     if (process.env.NODE_ENV === 'test') {
       this.isConfigured = true;
       this.transporter = {
@@ -43,40 +37,37 @@ class EmailService {
             messageId,
             sentAt: new Date()
           });
-          return { messageId, accepted: [options.to], response: '250 OK: Mock message queued' };
-        }
+          return { messageId, accepted: [options.to], rejected: [], response: '250 OK: Mock message queued' };
+        },
+        verify: async () => true
       };
       return;
     }
 
-    // Direct Resend HTTPS API transport (uses port 443; avoids Render cloud SMTP blocking)
-    const resendApiKey =
-      process.env.RESEND_API_KEY ||
-      (pass && pass.startsWith('re_') ? pass : null) ||
-      (user && user.startsWith('re_') ? user : null);
+    const host = process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com';
+    const port = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '465', 10);
+    const secure = process.env.SMTP_SECURE !== undefined
+      ? process.env.SMTP_SECURE === 'true'
+      : port === 465;
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS;
 
-    if (resendApiKey) {
-      this.isResendHttp = true;
-      this.resendApiKey = resendApiKey;
-      this.isConfigured = true;
-      logger.info('[EmailService] Configured direct Resend HTTPS API delivery (port 443)');
-      return;
-    }
-
-    if (host && user && pass) {
+    if (user && pass) {
       try {
         this.transporter = nodemailer.createTransport({
           host,
           port,
           secure,
           auth: { user, pass },
-          connectionTimeout: 10000,
+          connectionTimeout: 15000,
           greetingTimeout: 10000,
-          socketTimeout: 15000,
-          tls: { rejectUnauthorized: false }
+          socketTimeout: 20000,
+          tls: {
+            rejectUnauthorized: process.env.NODE_ENV === 'production'
+          }
         });
         this.isConfigured = true;
-        logger.info(`[EmailService] Configured genuine SMTP delivery via ${host}:${port}`);
+        logger.info(`[EmailService] Configured SMTP transporter via ${host}:${port} (secure: ${secure})`);
       } catch (err) {
         logger.error(`[EmailService] Failed to initialize SMTP transport: ${err.message}`);
         this.isConfigured = false;
@@ -84,40 +75,36 @@ class EmailService {
     } else {
       this.isConfigured = false;
       if (!this.hasWarnedUnconfigured) {
-        logger.warn('[EmailService] SMTP credentials not configured in environment. Outgoing transactional emails will be queued/logged safely. In-app notifications remain fully functional.');
+        logger.warn(
+          '[EmailService] SMTP credentials (SMTP_USER / SMTP_PASS) not configured in environment. Outgoing transactional emails will be recorded to outbox without blocking user actions.'
+        );
         this.hasWarnedUnconfigured = true;
       }
     }
   }
 
   /**
-   * Verify SMTP connection and credentials with the upstream provider
+   * Verify SMTP connection and credentials with the upstream mail server
    * @returns {Promise<{ success: boolean, message: string, code?: string }>}
    */
   async verifyConnection() {
-    if (this.isResendHttp) {
-      return {
-        success: true,
-        message: 'Resend HTTPS API delivery verified successfully (port 443).'
-      };
-    }
-
-    if (!this.isConfigured || !this.transporter) {
-      return {
-        success: false,
-        message: 'SMTP transport is not configured in the environment.'
-      };
-    }
-
-    if (typeof this.transporter.verify !== 'function') {
+    if (process.env.NODE_ENV === 'test') {
       return {
         success: true,
         message: 'SMTP transport is using an active test/mock adapter.'
       };
     }
 
+    if (!this.isConfigured || !this.transporter) {
+      return {
+        success: false,
+        message: 'SMTP transport is not configured in the environment (missing SMTP_USER or SMTP_PASS).'
+      };
+    }
+
     try {
       await this.transporter.verify();
+      logger.info('[EmailService] SMTP server connection and credentials verified successfully.');
       return {
         success: true,
         message: 'SMTP server connection and credentials verified successfully.'
@@ -134,34 +121,69 @@ class EmailService {
   }
 
   /**
-   * Sends a transactional email or logs to outbox if SMTP is unconfigured
+   * Get safe configuration status (never leaks passwords or credentials)
+   */
+  getStatus() {
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = parseInt(process.env.SMTP_PORT || '465', 10);
+    const user = process.env.SMTP_USER || null;
+    return {
+      configured: this.isConfigured,
+      host,
+      port,
+      secure: process.env.SMTP_SECURE === 'true' || port === 465,
+      userConfigured: Boolean(user),
+      userMasked: user ? `${user.substring(0, 3)}***@${user.split('@')[1] || ''}` : null,
+      fromAddress: process.env.EMAIL_FROM || (user ? `HireConnect <${user}>` : 'HireConnect <noreply@hireconnect.io>')
+    };
+  }
+
+  /**
+   * Sends a transactional email strictly to the dynamic intended recipient
+   * Never redirects to a developer or fallback inbox
    * @param {object} mailOptions { to, subject, html, text, from }
-   * @returns {Promise<{ success: boolean, messageId?: string, error?: string }>}
+   * @returns {Promise<{ success: boolean, messageId?: string, error?: string, code?: string }>}
    */
   async sendEmail({ to, subject, html, text, from }) {
-    const fromAddress = from || process.env.EMAIL_FROM || 'HireConnect <onboarding@resend.dev>';
+    const defaultUser = process.env.SMTP_USER;
+    const fromAddress = from || process.env.EMAIL_FROM || (defaultUser ? `HireConnect <${defaultUser}>` : 'HireConnect <noreply@hireconnect.io>');
 
+    // 1. Validate required fields
     if (!to || !subject || (!html && !text)) {
-      return { success: false, error: 'Recipient, subject, and content are required.' };
+      return {
+        success: false,
+        error: 'Recipient (to), subject, and content (html/text) are required.'
+      };
     }
 
-    // In test mode, record and return success immediately
+    // 2. Validate recipient email format
+    const cleanTo = String(to).trim();
+    if (!cleanTo || !EMAIL_REGEX.test(cleanTo)) {
+      const err = `Invalid recipient email address format: "${cleanTo}"`;
+      logger.warn(`[EmailService] ${err}`);
+      return { success: false, error: err, code: 'INVALID_RECIPIENT' };
+    }
+
+    // 3. Automated test mode: record and return immediately
     if (process.env.NODE_ENV === 'test') {
       const messageId = `<test-${Date.now()}@hireconnect.io>`;
-      this.sentEmails.push({ to, from: fromAddress, subject, html, text, messageId, sentAt: new Date() });
-      return { success: true, messageId };
-    }
-
-    // Direct Resend HTTPS API delivery (port 443)
-    if (this.isResendHttp) {
-      return this.sendViaResendHttp({ to, subject, html, text, fromAddress });
-    }
-
-    // If SMTP is not configured, track safely without throwing or breaking business flow
-    if (!this.isConfigured || !this.transporter) {
-      logger.info(`[EmailService:Unconfigured] Simulated email dispatch to ${to}: "${subject}"`);
       this.sentEmails.push({
-        to,
+        to: cleanTo,
+        from: fromAddress,
+        subject,
+        html,
+        text,
+        messageId,
+        sentAt: new Date()
+      });
+      return { success: true, messageId, accepted: [cleanTo], rejected: [] };
+    }
+
+    // 4. Safe fallback when SMTP is unconfigured in development
+    if (!this.isConfigured || !this.transporter) {
+      logger.info(`[EmailService:Unconfigured] Outgoing email to ${cleanTo}: "${subject}" (Simulated - SMTP unconfigured)`);
+      this.sentEmails.push({
+        to: cleanTo,
         from: fromAddress,
         subject,
         html,
@@ -176,215 +198,43 @@ class EmailService {
       };
     }
 
+    // 5. Genuine SMTP transmission via Nodemailer strictly to the specified recipient
     try {
       const info = await this.transporter.sendMail({
         from: fromAddress,
-        to,
+        to: cleanTo,
         subject,
         html,
         text
       });
 
       this.sentEmails.push({
-        to,
+        to: cleanTo,
         from: fromAddress,
         subject,
         messageId: info.messageId,
         sentAt: new Date()
       });
 
-      logger.info(`[EmailService] Delivered email to ${to} (MessageId: ${info.messageId})`);
-      return { success: true, messageId: info.messageId };
+      logger.info(`[EmailService] Successfully sent email to ${cleanTo} (MessageId: ${info.messageId})`);
+      return {
+        success: true,
+        messageId: info.messageId,
+        accepted: info.accepted || [cleanTo],
+        rejected: info.rejected || []
+      };
     } catch (err) {
-      const safeErrMsg = logger.redactConnectionString(err.message || 'Delivery error');
-      
-      // Resend Free Tier Sandbox Fallback:
-      // If Resend rejects because recipient is not verified on the testing domain (e.g. 550 5.7.1),
-      // forward delivery to the registered account owner (sabari1082005@gmail.com) so emails are never lost.
-      const isResendSandboxRestriction =
-        safeErrMsg.includes('testing emails to your own email address') ||
-        safeErrMsg.includes('550 5.7.1') ||
-        safeErrMsg.includes('verify a domain');
+      // Redact any connection strings or sensitive tokens from error message
+      const safeErrMsg = logger.redactConnectionString(err.message || 'SMTP transmission error');
+      logger.error(`[EmailService] SMTP delivery failed to ${cleanTo}: ${safeErrMsg}`);
 
-      const fallbackOwner = process.env.ADMIN_VERIFIED_EMAIL || 'sabari1082005@gmail.com';
-
-      if (isResendSandboxRestriction && to.toLowerCase() !== fallbackOwner.toLowerCase()) {
-        logger.warn(
-          `[EmailService:Sandbox] Recipient ${to} is restricted by Resend sandbox. Routing real delivery to verified developer inbox (${fallbackOwner}).`
-        );
-
-        try {
-          const sandboxNoticeHtml = `
-            <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif; font-size: 13px; color: #92400e;">
-              <strong>🔔 Resend Sandbox Delivery Notice:</strong> This transactional notification was sent to <strong>${to}</strong> on HireConnect. Because Resend testing domains restrict delivery to registered developers, it has been delivered to your verified inbox (${fallbackOwner}).
-            </div>
-          `;
-          const sandboxNoticeText = `[Resend Sandbox Notice: Intended Recipient: ${to} | Delivered to Account Owner: ${fallbackOwner}]\n\n`;
-
-          const fallbackInfo = await this.transporter.sendMail({
-            from: fromAddress,
-            to: fallbackOwner,
-            subject: `[For: ${to}] ${subject}`,
-            html: `${sandboxNoticeHtml}${html || ''}`,
-            text: `${sandboxNoticeText}${text || ''}`
-          });
-
-          this.sentEmails.push({
-            to: fallbackOwner,
-            intendedRecipient: to,
-            from: fromAddress,
-            subject: `[For: ${to}] ${subject}`,
-            messageId: fallbackInfo.messageId,
-            sentAt: new Date(),
-            deliveredViaSandboxFallback: true
-          });
-
-          logger.info(`[EmailService] Successfully delivered sandbox fallback email to ${fallbackOwner} (MessageId: ${fallbackInfo.messageId})`);
-          return {
-            success: true,
-            messageId: fallbackInfo.messageId,
-            deliveredToFallback: fallbackOwner,
-            intendedRecipient: to
-          };
-        } catch (fallbackErr) {
-          logger.error(`[EmailService] Fallback dispatch to ${fallbackOwner} also failed: ${fallbackErr.message}`);
-        }
-      }
-
-      logger.error(`[EmailService] Delivery failed to ${to}: ${safeErrMsg}`);
-      return { success: false, error: safeErrMsg };
+      // STRICT REQUIREMENT: Zero fallback redirection. Report failure cleanly.
+      return {
+        success: false,
+        error: safeErrMsg,
+        code: err.code || 'SMTP_ERROR'
+      };
     }
-  }
-
-  /**
-   * Direct Resend HTTPS REST API delivery via port 443
-   * Immune to cloud provider SMTP port blocking (Render, AWS, Heroku)
-   */
-  async sendViaResendHttp({ to, subject, html, text, fromAddress }) {
-    const postPayload = (payloadObj) => {
-      return new Promise((resolve) => {
-        const payload = JSON.stringify(payloadObj);
-        const req = https.request(
-          {
-            hostname: 'api.resend.com',
-            port: 443,
-            path: '/emails',
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${this.resendApiKey}`,
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(payload)
-            },
-            timeout: 8000
-          },
-          (res) => {
-            let body = '';
-            res.on('data', (chunk) => {
-              body += chunk;
-            });
-            res.on('end', () => {
-              try {
-                const json = JSON.parse(body || '{}');
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                  resolve({ success: true, messageId: json.id });
-                } else {
-                  resolve({
-                    success: false,
-                    status: res.statusCode,
-                    error: json.message || json.name || 'Resend API error'
-                  });
-                }
-              } catch (e) {
-                resolve({ success: false, error: body || 'Invalid Resend response' });
-              }
-            });
-          }
-        );
-
-        req.on('error', (err) => resolve({ success: false, error: err.message }));
-        req.on('timeout', () => {
-          req.destroy();
-          resolve({ success: false, error: 'Resend API request timeout' });
-        });
-        req.write(payload);
-        req.end();
-      });
-    };
-
-    let result = await postPayload({
-      from: fromAddress,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-      text
-    });
-
-    const isSandboxRestricted =
-      !result.success &&
-      (result.status === 403 ||
-        (result.error &&
-          (result.error.includes('testing emails to your own email address') ||
-            result.error.includes('verify a domain'))));
-
-    const fallbackOwner = process.env.ADMIN_VERIFIED_EMAIL || 'sabari1082005@gmail.com';
-
-    if (isSandboxRestricted && to.toLowerCase() !== fallbackOwner.toLowerCase()) {
-      logger.warn(
-        `[EmailService:ResendHTTP] Recipient ${to} is restricted by Resend sandbox. Routing real delivery to verified developer inbox (${fallbackOwner}).`
-      );
-
-      const sandboxNoticeHtml = `
-        <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-family: sans-serif; font-size: 13px; color: #92400e;">
-          <strong>🔔 Resend Sandbox Delivery Notice:</strong> This transactional notification was sent to <strong>${to}</strong> on HireConnect. Because Resend testing domains restrict delivery to registered developers, it has been delivered to your verified inbox (${fallbackOwner}).
-        </div>
-      `;
-      const sandboxNoticeText = `[Resend Sandbox Notice: Intended Recipient: ${to} | Delivered to Account Owner: ${fallbackOwner}]\n\n`;
-
-      const fallbackResult = await postPayload({
-        from: fromAddress,
-        to: [fallbackOwner],
-        subject: `[For: ${to}] ${subject}`,
-        html: `${sandboxNoticeHtml}${html || ''}`,
-        text: `${sandboxNoticeText}${text || ''}`
-      });
-
-      if (fallbackResult.success) {
-        this.sentEmails.push({
-          to: fallbackOwner,
-          intendedRecipient: to,
-          from: fromAddress,
-          subject: `[For: ${to}] ${subject}`,
-          messageId: fallbackResult.messageId,
-          sentAt: new Date(),
-          deliveredViaSandboxFallback: true
-        });
-
-        logger.info(
-          `[EmailService:ResendHTTP] Successfully delivered sandbox fallback email to ${fallbackOwner} (MessageId: ${fallbackResult.messageId})`
-        );
-        return {
-          success: true,
-          messageId: fallbackResult.messageId,
-          deliveredToFallback: fallbackOwner,
-          intendedRecipient: to
-        };
-      }
-    }
-
-    if (result.success) {
-      this.sentEmails.push({
-        to,
-        from: fromAddress,
-        subject,
-        messageId: result.messageId,
-        sentAt: new Date()
-      });
-      logger.info(`[EmailService:ResendHTTP] Delivered email to ${to} (MessageId: ${result.messageId})`);
-    } else {
-      logger.error(`[EmailService:ResendHTTP] Delivery failed to ${to}: ${result.error}`);
-    }
-
-    return result;
   }
 
   /**
@@ -430,7 +280,6 @@ class EmailService {
           logger.warn(`[EmailService] Outbox event ${item.eventId} reached max attempts (${item.maxAttempts}). Marked as permanently failed.`);
         } else {
           item.status = 'retry_scheduled';
-          // Exponential backoff: 1m, 2m, 4m, 8m...
           const backoffMinutes = Math.pow(2, item.attempts - 1);
           item.nextRetryAt = new Date(Date.now() + backoffMinutes * 60000);
           logger.info(`[EmailService] Outbox event ${item.eventId} scheduled for retry #${item.attempts} in ${backoffMinutes} minute(s).`);

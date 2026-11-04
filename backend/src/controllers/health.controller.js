@@ -75,8 +75,29 @@ const getReadiness = (req, res) => {
   });
 };
 
+/**
+ * Email Service Health & SMTP Connection Probe
+ * GET /api/health/email
+ */
+const getEmailHealth = async (req, res) => {
+  const emailService = require('../services/email.service');
+  const safeStatus = emailService.getStatus();
+  const verification = await emailService.verifyConnection();
+
+  return ApiResponse.success(res, {
+    statusCode: verification.success ? 200 : 503,
+    message: verification.message,
+    data: {
+      status: verification.success ? 'connected' : 'disconnected',
+      smtp: safeStatus,
+      verificationResult: verification
+    }
+  });
+};
+
 module.exports = {
   getHealth,
   getLiveness,
-  getReadiness
+  getReadiness,
+  getEmailHealth
 };

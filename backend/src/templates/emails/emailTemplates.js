@@ -620,6 +620,120 @@ function passwordReset({ recipientName, resetUrl, expiresInMinutes = 60 }) {
   };
 }
 
+// ============================================================================
+// 13. WELCOME TO HIRECONNECT (To Candidate / Recruiter)
+// ============================================================================
+function welcome({ recipientName, role = 'candidate', actionUrl }) {
+  const isRecruiter = role === 'recruiter';
+  const title = isRecruiter ? 'Welcome to HireConnect for Recruiters' : 'Welcome to HireConnect';
+  const preheader = isRecruiter
+    ? 'Start discovering top engineering talent and scaling your team.'
+    : 'Your gateway to top tech careers, direct applications, and live interviews.';
+
+  const contentHtml = isRecruiter
+    ? `
+    <p>Hi <strong>${escapeHtml(recipientName || 'there')}</strong>,</p>
+    <p>Welcome to <strong>HireConnect</strong>! We are thrilled to partner with you and your hiring team.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+      <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; margin-bottom: 12px;">
+        🚀 Getting Started as a Recruiter
+      </div>
+      <div class="row"><span class="label">1. Post Open Roles</span><span class="value">Publish job openings with custom screening</span></div>
+      <div class="row"><span class="label">2. Candidate Matching</span><span class="value">AI-driven talent discovery &amp; scoring</span></div>
+      <div class="row"><span class="label">3. Easy Scheduling</span><span class="value">Integrated calendar &amp; video interviews</span></div>
+    </div>
+
+    <p style="font-size: 14px; color: #475569;">
+      Head over to your recruiter dashboard to publish your first opening and manage candidate applications seamlessly.
+    </p>
+  `
+    : `
+    <p>Hi <strong>${escapeHtml(recipientName || 'there')}</strong>,</p>
+    <p>Welcome to <strong>HireConnect</strong>! We are excited to support your career journey.</p>
+    
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+      <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; margin-bottom: 12px;">
+        ✨ What You Can Do on HireConnect
+      </div>
+      <div class="row"><span class="label">1. Complete Profile</span><span class="value">Upload resume &amp; highlight skills</span></div>
+      <div class="row"><span class="label">2. Explore Jobs</span><span class="value">Direct application to verified tech employers</span></div>
+      <div class="row"><span class="label">3. Book Interviews</span><span class="value">Instant self-scheduling &amp; meeting links</span></div>
+    </div>
+
+    <p style="font-size: 14px; color: #475569;">
+      Your profile is now live! Explore open positions, apply directly, and track your application status in real-time.
+    </p>
+  `;
+
+  const text = isRecruiter
+    ? `Hi ${recipientName || 'there'},\n\nWelcome to HireConnect for Recruiters!\n\nGetting Started:\n1. Post Open Roles\n2. AI Candidate Matching\n3. Integrated Scheduling & Video Rooms\n\nAccess your dashboard: ${actionUrl}\n\nBest regards,\nThe HireConnect Team`
+    : `Hi ${recipientName || 'there'},\n\nWelcome to HireConnect!\n\nExplore thousands of top tech opportunities, apply with one click, and schedule interviews directly.\n\nGet started: ${actionUrl}\n\nBest regards,\nThe HireConnect Team`;
+
+  return {
+    subject: isRecruiter ? 'Welcome to HireConnect - Start Hiring Top Talent' : 'Welcome to HireConnect - Your Career Journey Begins',
+    html: wrapTemplate({
+      title,
+      preheader,
+      contentHtml,
+      actionUrl,
+      actionText: isRecruiter ? 'Go to Recruiter Dashboard' : 'Explore Open Positions'
+    }),
+    text
+  };
+}
+
+// ============================================================================
+// 14. INTERVIEW INVITATION (To Candidate)
+// ============================================================================
+function interviewInvitation({
+  recipientName,
+  recruiterName,
+  jobTitle,
+  companyName,
+  schedulingUrl,
+  customNote
+}) {
+  const roleName = jobTitle || 'Position';
+  const employerName = companyName || 'HireConnect Partner';
+  const title = `Interview Invitation: ${roleName}`;
+  const preheader = `You've been invited to interview for ${roleName} at ${employerName}. Select your preferred time slot.`;
+
+  const contentHtml = `
+    <p>Hi <strong>${escapeHtml(recipientName || 'there')}</strong>,</p>
+    <p>Great news! <strong>${escapeHtml(recruiterName || 'The hiring team')}</strong> from <strong>${escapeHtml(employerName)}</strong> was impressed with your application for <strong>${escapeHtml(roleName)}</strong> and would like to invite you for an interview.</p>
+
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+      <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; margin-bottom: 12px;">
+        🗓️ Interview Invitation Details
+      </div>
+      <div class="row"><span class="label">Position</span><span class="value" style="font-weight: 600;">${escapeHtml(roleName)}</span></div>
+      <div class="row"><span class="label">Company</span><span class="value">${escapeHtml(employerName)}</span></div>
+      <div class="row"><span class="label">Invited By</span><span class="value">${escapeHtml(recruiterName || 'Hiring Team')}</span></div>
+      <div class="row"><span class="label">Format</span><span class="value">Video Conference (Google Meet / WebRTC)</span></div>
+      ${customNote ? `<div class="row"><span class="label">Note</span><span class="value">${escapeHtml(customNote)}</span></div>` : ''}
+    </div>
+
+    <p style="font-size: 14px; color: #475569;">
+      Please select a convenient date and time slot from the recruiter's live calendar using the link below:
+    </p>
+  `;
+
+  const text = `Hi ${recipientName || 'there'},\n\nYou're invited to interview for ${roleName} at ${employerName}!\n\nInvited By: ${recruiterName || 'Hiring Team'}\n${customNote ? `Note: ${customNote}\n` : ''}\nPlease select a time slot that works for you:\n${schedulingUrl}\n\nBest regards,\nThe HireConnect Team`;
+
+  return {
+    subject: `Interview Invitation: ${roleName} at ${employerName}`,
+    html: wrapTemplate({
+      title,
+      preheader,
+      contentHtml,
+      actionUrl: schedulingUrl,
+      actionText: 'Select Interview Time Slot'
+    }),
+    text
+  };
+}
+
 module.exports = {
   applicationSubmitted,
   newApplicant,
@@ -632,5 +746,7 @@ module.exports = {
   companyVerificationResult,
   accountStatusChanged,
   jobModerated,
-  passwordReset
+  passwordReset,
+  welcome,
+  interviewInvitation
 };

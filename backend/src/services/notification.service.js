@@ -319,6 +319,40 @@ class NotificationService {
   }
 
   /**
+   * Triggered when a recruiter invites a candidate to self-schedule an interview
+   */
+  async notifyInterviewInvited({ candidate, recruiter, job, company, schedulingUrl, customNote }) {
+    const candId = candidate._id || candidate.id;
+    const jobId = job?._id || job?.id;
+    const jobTitle = job?.title || 'Job Opening';
+    const companyName = company?.name || job?.companyName || 'HireConnect Partner';
+    const baseUrl = this.getFrontendUrl();
+    const finalSchedulingUrl = schedulingUrl || `${baseUrl}/schedule/${recruiter._id || recruiter.id}${jobId ? `?jobId=${jobId}` : ''}`;
+
+    const candEmail = emailTemplates.interviewInvitation({
+      recipientName: candidate.name,
+      recruiterName: recruiter.name || 'Hiring Team',
+      jobTitle,
+      companyName,
+      schedulingUrl: finalSchedulingUrl,
+      customNote
+    });
+
+    await this.createNotification({
+      recipientId: candId,
+      type: 'interview_invitation',
+      title: 'Interview Invitation',
+      message: `You've been invited by ${recruiter.name || 'Hiring Team'} to interview for ${jobTitle} at ${companyName}.`,
+      resourceType: 'job',
+      resourceId: jobId,
+      actionUrl: `/schedule/${recruiter._id || recruiter.id}`,
+      deduplicationKey: `interview_invite:${jobId || 'direct'}:${candId}`,
+      metadata: { jobTitle, companyName, recruiterId: recruiter._id || recruiter.id, customNote },
+      emailOptions: candEmail
+    });
+  }
+
+  /**
    * Triggered when an interview is booked
    */
   async notifyInterviewBooked({ meeting, candidate, recruiter, job, company }) {
