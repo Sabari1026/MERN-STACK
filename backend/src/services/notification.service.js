@@ -719,13 +719,29 @@ class NotificationService {
 
   /**
    * Triggered when a job is published or closed
+   * Dispatches dual notifications to the publishing recruiter and platform administrator
    */
-  async notifyJobStatusChanged({ job, recruiter, status }) {
+  async notifyJobStatusChanged({ job, recruiter, company, status }) {
     if (!recruiter) return;
     const recId = recruiter._id || recruiter.id;
     const jobId = job._id || job.id;
     const jobTitle = job.title;
+    const companyName = company?.name || job.companyName || 'HireConnect Partner';
+    const baseUrl = this.getFrontendUrl();
     const actionUrl = `/recruiter/jobs/${jobId}`;
+
+    let emailOptions = null;
+    if (status === 'published') {
+      emailOptions = emailTemplates.jobPublished({
+        recruiterName: recruiter.name || 'Recruiter',
+        jobTitle,
+        companyName,
+        department: job.department || 'Engineering',
+        workMode: job.workMode || 'Remote',
+        location: job.location || 'Remote',
+        actionUrl: `${baseUrl}/jobs/${job.slug || jobId}`
+      });
+    }
 
     await this.createNotification({
       recipientId: recId,
@@ -736,8 +752,36 @@ class NotificationService {
       resourceId: jobId,
       actionUrl,
       deduplicationKey: `job_status:${jobId}:${status}`,
-      metadata: { jobTitle, status }
+      metadata: { jobTitle, status, companyName },
+      emailOptions
     });
+
+    // Dual-notification: Platform administrator notification when a job is published
+    if (status === 'published' && (process.env.NODE_ENV !== 'test' || process.env.ENABLE_ADMIN_ALERTS === 'true')) {
+      try {
+        const adminRecipient = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+        const adminEmail = emailTemplates.adminJobPublished({
+          recruiterName: recruiter.name || 'Recruiter',
+          recruiterEmail: recruiter.email || '',
+          jobTitle,
+          companyName,
+          department: job.department || 'Engineering',
+          workMode: job.workMode || 'Remote',
+          location: job.location || 'Remote',
+          jobId: jobId ? jobId.toString() : 'N/A',
+          actionUrl: `${baseUrl}/jobs/${job.slug || jobId}`
+        });
+
+        await emailService.sendEmail({
+          to: adminRecipient,
+          subject: adminEmail.subject,
+          html: adminEmail.html,
+          text: adminEmail.text
+        });
+      } catch (adminErr) {
+        logger.warn(`[NotificationService] Admin job published alert warning: ${adminErr.message}`);
+      }
+    }
   }
 
   /**

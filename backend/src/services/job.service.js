@@ -298,9 +298,15 @@ class JobService {
 
     const newJob = await Job.create(jobData);
 
-    // If published, update company activeJobsCount
+    // If published, update company activeJobsCount and notify recruiter and admin
     if (newJob.status === 'published') {
       await this.syncCompanyActiveJobs(company._id || company.id);
+      notificationService.notifyJobStatusChanged({
+        job: newJob,
+        recruiter: user,
+        company,
+        status: 'published'
+      }).catch((e) => logger.warn(`[JobService] Publish notification error on create: ${e.message}`));
     }
 
     return newJob;
@@ -572,6 +578,7 @@ class JobService {
     notificationService.notifyJobStatusChanged({
       job,
       recruiter: user,
+      company,
       status: 'published'
     }).catch((e) => logger.warn(`[JobService] Publish notification error: ${e.message}`));
 

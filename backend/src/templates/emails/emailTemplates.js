@@ -859,6 +859,129 @@ function adminApplicationStatusChanged({ candidateName, candidateEmail, recruite
   };
 }
 
+function jobPublished({
+  recruiterName,
+  jobTitle,
+  companyName,
+  department,
+  workMode,
+  location,
+  actionUrl
+}) {
+  const title = `Job Published: ${jobTitle}`;
+  const preheader = `Your job opening for ${jobTitle} at ${companyName} is now live on HireConnect.`;
+
+  const contentHtml = `
+    <p>Hello ${escapeHtml(recruiterName || 'there')},</p>
+    <p>Your job opening has been published successfully and is now active and discoverable on HireConnect.</p>
+    <div class="card">
+      <div class="row">
+        <span class="label">Position</span>
+        <span class="value">${escapeHtml(jobTitle)}</span>
+      </div>
+      <div class="row">
+        <span class="label">Company</span>
+        <span class="value">${escapeHtml(companyName)}</span>
+      </div>
+      ${department ? `
+      <div class="row">
+        <span class="label">Department</span>
+        <span class="value">${escapeHtml(department)}</span>
+      </div>` : ''}
+      <div class="row">
+        <span class="label">Work Mode</span>
+        <span class="value">${escapeHtml(workMode || 'Remote')}</span>
+      </div>
+      ${location ? `
+      <div class="row">
+        <span class="label">Location</span>
+        <span class="value">${escapeHtml(location)}</span>
+      </div>` : ''}
+      <div class="row">
+        <span class="label">Status</span>
+        <span class="value" style="color: #10b981; font-weight: bold;">Published &amp; Active</span>
+      </div>
+    </div>
+    <p>Candidates can now search, view requirements, and submit verified applications for this role.</p>
+  `;
+
+  return {
+    subject: `Job Opening Published: ${jobTitle} at ${companyName}`,
+    html: wrapTemplate({
+      title,
+      preheader,
+      contentHtml,
+      actionUrl,
+      actionText: 'View Live Job Opening'
+    }),
+    text: `Hello ${recruiterName},\n\nYour job opening "${jobTitle}" at ${companyName} is now live and published on HireConnect.\n\nWork Mode: ${workMode || 'Remote'}\nLocation: ${location || 'Remote'}\n\nView listing: ${actionUrl}`
+  };
+}
+
+function adminJobPublished({
+  recruiterName,
+  recruiterEmail,
+  jobTitle,
+  companyName,
+  department,
+  workMode,
+  location,
+  jobId,
+  actionUrl
+}) {
+  const title = `[Admin Alert] New Job Published`;
+  const preheader = `${companyName} published "${jobTitle}" on HireConnect.`;
+
+  const contentHtml = `
+    <p>Hi <strong>Administrator</strong>,</p>
+    <p>A new job opening has been published and is currently active on <strong>HireConnect</strong>:</p>
+    <div class="card">
+      <div class="row">
+        <span class="label">Job Title</span>
+        <span class="value">${escapeHtml(jobTitle)}</span>
+      </div>
+      <div class="row">
+        <span class="label">Company</span>
+        <span class="value">${escapeHtml(companyName)}</span>
+      </div>
+      <div class="row">
+        <span class="label">Recruiter</span>
+        <span class="value">${escapeHtml(recruiterName)} (${escapeHtml(recruiterEmail || 'N/A')})</span>
+      </div>
+      ${department ? `
+      <div class="row">
+        <span class="label">Department</span>
+        <span class="value">${escapeHtml(department)}</span>
+      </div>` : ''}
+      <div class="row">
+        <span class="label">Work Mode</span>
+        <span class="value">${escapeHtml(workMode || 'Remote')}</span>
+      </div>
+      ${location ? `
+      <div class="row">
+        <span class="label">Location</span>
+        <span class="value">${escapeHtml(location)}</span>
+      </div>` : ''}
+      <div class="row">
+        <span class="label">Job ID</span>
+        <span class="value">${escapeHtml(jobId || 'N/A')}</span>
+      </div>
+    </div>
+  `;
+
+  return {
+    subject: `[Admin Alert] New Job Published: ${jobTitle} at ${companyName}`,
+    html: wrapTemplate({
+      title,
+      preheader,
+      contentHtml,
+      actionUrl,
+      actionText: 'Review Job Listing'
+    }),
+    text: `[Admin Alert] New Job Published\n\nJob Title: ${jobTitle}\nCompany: ${companyName}\nRecruiter: ${recruiterName} (${recruiterEmail})\nLocation: ${location || 'Remote'}\n\nListing URL: ${actionUrl}`
+  };
+}
+
 module.exports = {
   applicationSubmitted,
   newApplicant,
@@ -878,5 +1001,7 @@ module.exports = {
   adminApplicationSubmitted,
   adminInterviewBooked,
   adminInterviewInvited,
-  adminApplicationStatusChanged
+  adminApplicationStatusChanged,
+  jobPublished,
+  adminJobPublished
 };
