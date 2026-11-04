@@ -88,6 +88,13 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CALLBACK_URL: z.string().optional(),
 
+  // Gmail API OAuth 2.0 Provider Configuration
+  GMAIL_CLIENT_ID: z.string().optional(),
+  GMAIL_CLIENT_SECRET: z.string().optional(),
+  GMAIL_REFRESH_TOKEN: z.string().optional(),
+  GMAIL_USER: z.string().optional().default('sabari1082005@gmail.com'),
+  ADMIN_EMAIL: z.string().optional().default('sabari1082005@gmail.com'),
+
   EMAIL_HOST: z.string().optional(),
   EMAIL_PORT: z.string().optional(),
   EMAIL_USER: z.string().optional(),

@@ -244,6 +244,34 @@ class NotificationService {
         emailOptions: recruiterEmail
       });
     }
+
+    // 3. Platform Administrator email notification (enabled in production/dev and integration test)
+    if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_ADMIN_ALERTS === 'true') {
+      try {
+        const adminRecipient = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+        const adminEmail = emailTemplates.adminApplicationSubmitted({
+          candidateName: candidate.name,
+          candidateEmail: candidate.email,
+          jobTitle,
+          companyName,
+          applicationId: appId,
+          actionUrl: `${baseUrl}/admin`
+        });
+
+        emailService
+          .sendEmail({
+            to: adminRecipient,
+            subject: adminEmail.subject,
+            html: adminEmail.html,
+            text: adminEmail.text
+          })
+          .catch((adminErr) => {
+            logger.warn(`[NotificationService] Admin application alert dispatch failed: ${adminErr.message}`);
+          });
+      } catch (adminErr) {
+        logger.warn(`[NotificationService] Admin application alert error: ${adminErr.message}`);
+      }
+    }
   }
 
   /**
@@ -280,6 +308,35 @@ class NotificationService {
       metadata: { jobTitle, companyName, previousStatus, newStatus },
       emailOptions: email
     });
+
+    // Administrator status change notification (enabled in production/dev and integration test)
+    if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_ADMIN_ALERTS === 'true') {
+      try {
+        const adminRecipient = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+        const adminEmail = emailTemplates.adminApplicationStatusChanged({
+          candidateName: candidate?.name || 'Candidate',
+          candidateEmail: candidate?.email || 'N/A',
+          jobTitle,
+          companyName,
+          previousStatus,
+          newStatus,
+          actionUrl: `${baseUrl}/admin`
+        });
+
+        emailService
+          .sendEmail({
+            to: adminRecipient,
+            subject: adminEmail.subject,
+            html: adminEmail.html,
+            text: adminEmail.text
+          })
+          .catch((adminErr) => {
+            logger.warn(`[NotificationService] Admin status change alert dispatch failed: ${adminErr.message}`);
+          });
+      } catch (adminErr) {
+        logger.warn(`[NotificationService] Admin status change alert error: ${adminErr.message}`);
+      }
+    }
   }
 
   /**
@@ -350,6 +407,34 @@ class NotificationService {
       metadata: { jobTitle, companyName, recruiterId: recruiter._id || recruiter.id, customNote },
       emailOptions: candEmail
     });
+
+    // Administrator interview invitation alert (enabled in production/dev and integration test)
+    if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_ADMIN_ALERTS === 'true') {
+      try {
+        const adminRecipient = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+        const adminEmail = emailTemplates.adminInterviewInvited({
+          candidateName: candidate.name,
+          candidateEmail: candidate.email || 'N/A',
+          recruiterName: recruiter.name || 'Hiring Team',
+          jobTitle,
+          companyName,
+          actionUrl: `${baseUrl}/admin`
+        });
+
+        emailService
+          .sendEmail({
+            to: adminRecipient,
+            subject: adminEmail.subject,
+            html: adminEmail.html,
+            text: adminEmail.text
+          })
+          .catch((adminErr) => {
+            logger.warn(`[NotificationService] Admin interview invitation alert dispatch failed: ${adminErr.message}`);
+          });
+      } catch (adminErr) {
+        logger.warn(`[NotificationService] Admin interview invitation alert error: ${adminErr.message}`);
+      }
+    }
   }
 
   /**
@@ -440,6 +525,37 @@ class NotificationService {
       metadata: { meetingTitle, jobTitle, companyName, dateStr, timeSlotStr, timeZone, videoUrl: meeting.meetingLink },
       emailOptions: recEmail
     });
+
+    // 3. Platform Administrator interview notification (enabled in production/dev and integration test)
+    if (process.env.NODE_ENV !== 'test' || process.env.ENABLE_ADMIN_ALERTS === 'true') {
+      try {
+        const adminRecipient = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+        const adminEmail = emailTemplates.adminInterviewBooked({
+          candidateName: candidate.name,
+          candidateEmail: candidate.email || 'N/A',
+          recruiterName: recruiter.name || 'Recruiter',
+          jobTitle,
+          companyName,
+          dateStr,
+          timeSlotStr,
+          videoUrl: meeting.meetingLink,
+          actionUrl: `${baseUrl}/admin`
+        });
+
+        emailService
+          .sendEmail({
+            to: adminRecipient,
+            subject: adminEmail.subject,
+            html: adminEmail.html,
+            text: adminEmail.text
+          })
+          .catch((adminErr) => {
+            logger.warn(`[NotificationService] Admin interview booked alert dispatch failed: ${adminErr.message}`);
+          });
+      } catch (adminErr) {
+        logger.warn(`[NotificationService] Admin interview booked alert error: ${adminErr.message}`);
+      }
+    }
   }
 
   /**

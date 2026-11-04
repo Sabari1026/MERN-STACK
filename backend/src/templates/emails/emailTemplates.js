@@ -734,6 +734,131 @@ function interviewInvitation({
   };
 }
 
+// ============================================================================
+// 15. ADMIN ALERTS & AUDIT NOTIFICATIONS (To Platform Administrator)
+// ============================================================================
+function adminNewUserRegistered({ userName, userEmail, role = 'candidate', actionUrl }) {
+  const isRecruiter = role === 'recruiter';
+  const title = `[Admin Alert] New ${isRecruiter ? 'Recruiter' : 'Candidate'} Registered`;
+  const preheader = `${userName} (${userEmail}) just registered as a ${role}.`;
+
+  const contentHtml = `
+    <p>Hi <strong>Administrator</strong>,</p>
+    <p>A new user has registered on the <strong>HireConnect</strong> platform:</p>
+    <div class="card">
+      <div class="row"><span class="label">User Name</span><span class="value">${escapeHtml(userName)}</span></div>
+      <div class="row"><span class="label">Email Address</span><span class="value">${escapeHtml(userEmail)}</span></div>
+      <div class="row"><span class="label">Platform Role</span><span class="value" style="text-transform: capitalize; color: #2563eb;">${escapeHtml(role)}</span></div>
+      <div class="row"><span class="label">Registered At</span><span class="value">${new Date().toUTCString()}</span></div>
+    </div>
+    <p style="font-size: 13px; color: #64748b;">You can review user privileges and activity from the central administration portal.</p>
+  `;
+
+  const text = `[ADMIN ALERT] New ${role} registered:\nName: ${userName}\nEmail: ${userEmail}\nRole: ${role}\nTime: ${new Date().toISOString()}\n\nAdmin Portal: ${actionUrl}`;
+
+  return {
+    subject: `[Admin Alert] New ${isRecruiter ? 'Recruiter' : 'Candidate'} Registered: ${userName}`,
+    html: wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText: 'View Admin Dashboard' }),
+    text
+  };
+}
+
+function adminApplicationSubmitted({ candidateName, candidateEmail, jobTitle, companyName, applicationId, actionUrl }) {
+  const title = '[Admin Alert] New Job Application Submitted';
+  const preheader = `${candidateName} applied for ${jobTitle} at ${companyName}.`;
+
+  const contentHtml = `
+    <p>Hi <strong>Administrator</strong>,</p>
+    <p>A new job application was submitted on <strong>HireConnect</strong>:</p>
+    <div class="card">
+      <div class="row"><span class="label">Candidate</span><span class="value">${escapeHtml(candidateName)} (${escapeHtml(candidateEmail)})</span></div>
+      <div class="row"><span class="label">Job Position</span><span class="value">${escapeHtml(jobTitle)}</span></div>
+      <div class="row"><span class="label">Company</span><span class="value">${escapeHtml(companyName)}</span></div>
+      <div class="row"><span class="label">Application Ref</span><span class="value" style="font-family: monospace;">#${escapeHtml(String(applicationId).slice(-8).toUpperCase())}</span></div>
+    </div>
+  `;
+
+  const text = `[ADMIN ALERT] New application submitted:\nCandidate: ${candidateName} (${candidateEmail})\nJob: ${jobTitle} at ${companyName}\nApplication ID: ${applicationId}\n\nView: ${actionUrl}`;
+
+  return {
+    subject: `[Admin Alert] Application Submitted: ${candidateName} for ${jobTitle}`,
+    html: wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText: 'Review Application' }),
+    text
+  };
+}
+
+function adminInterviewBooked({ candidateName, candidateEmail, recruiterName, jobTitle, companyName, dateStr, timeSlotStr, videoUrl, actionUrl }) {
+  const title = '[Admin Alert] New Interview Scheduled';
+  const preheader = `${candidateName} booked an interview with ${recruiterName} for ${jobTitle}.`;
+
+  const contentHtml = `
+    <p>Hi <strong>Administrator</strong>,</p>
+    <p>An interview round has been booked on <strong>HireConnect</strong>:</p>
+    <div class="card">
+      <div class="row"><span class="label">Candidate</span><span class="value">${escapeHtml(candidateName)} (${escapeHtml(candidateEmail)})</span></div>
+      <div class="row"><span class="label">Interviewer / Recruiter</span><span class="value">${escapeHtml(recruiterName)}</span></div>
+      <div class="row"><span class="label">Position &amp; Company</span><span class="value">${escapeHtml(jobTitle)} &middot; ${escapeHtml(companyName)}</span></div>
+      <div class="row"><span class="label">Scheduled Time</span><span class="value" style="color: #2563eb; font-weight: 600;">${escapeHtml(dateStr)} at ${escapeHtml(timeSlotStr)}</span></div>
+      ${videoUrl ? `<div class="row"><span class="label">Meeting Room</span><span class="value">${escapeHtml(videoUrl)}</span></div>` : ''}
+    </div>
+  `;
+
+  const text = `[ADMIN ALERT] Interview Scheduled:\nCandidate: ${candidateName} (${candidateEmail})\nRecruiter: ${recruiterName}\nJob: ${jobTitle} (${companyName})\nDate/Time: ${dateStr} at ${timeSlotStr}\nRoom: ${videoUrl || 'N/A'}`;
+
+  return {
+    subject: `[Admin Alert] Interview Scheduled: ${candidateName} with ${recruiterName}`,
+    html: wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText: 'View Meeting Details' }),
+    text
+  };
+}
+
+function adminInterviewInvited({ candidateName, candidateEmail, recruiterName, jobTitle, companyName, actionUrl }) {
+  const title = '[Admin Alert] Candidate Invited to Interview';
+  const preheader = `${recruiterName} invited ${candidateName} to self-schedule an interview for ${jobTitle}.`;
+
+  const contentHtml = `
+    <p>Hi <strong>Administrator</strong>,</p>
+    <p>A candidate was invited to self-schedule an interview slot:</p>
+    <div class="card">
+      <div class="row"><span class="label">Candidate</span><span class="value">${escapeHtml(candidateName)} (${escapeHtml(candidateEmail)})</span></div>
+      <div class="row"><span class="label">Inviting Recruiter</span><span class="value">${escapeHtml(recruiterName)}</span></div>
+      <div class="row"><span class="label">Job Position</span><span class="value">${escapeHtml(jobTitle)} (${escapeHtml(companyName)})</span></div>
+    </div>
+  `;
+
+  const text = `[ADMIN ALERT] Interview Invitation sent:\nCandidate: ${candidateName} (${candidateEmail})\nRecruiter: ${recruiterName}\nJob: ${jobTitle} (${companyName})\n\nView: ${actionUrl}`;
+
+  return {
+    subject: `[Admin Alert] Interview Invitation: ${candidateName} by ${recruiterName}`,
+    html: wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText: 'View Recruitment Pipeline' }),
+    text
+  };
+}
+
+function adminApplicationStatusChanged({ candidateName, candidateEmail, recruiterName, jobTitle, companyName, previousStatus, newStatus, actionUrl }) {
+  const title = '[Admin Alert] Application Status Updated';
+  const preheader = `${candidateName}'s application for ${jobTitle} moved from ${previousStatus} to ${newStatus}.`;
+
+  const contentHtml = `
+    <p>Hi <strong>Administrator</strong>,</p>
+    <p>An application lifecycle transition occurred on <strong>HireConnect</strong>:</p>
+    <div class="card">
+      <div class="row"><span class="label">Candidate</span><span class="value">${escapeHtml(candidateName)} (${escapeHtml(candidateEmail)})</span></div>
+      <div class="row"><span class="label">Job</span><span class="value">${escapeHtml(jobTitle)} at ${escapeHtml(companyName)}</span></div>
+      <div class="row"><span class="label">Previous Status</span><span class="value">${escapeHtml(previousStatus || 'N/A')}</span></div>
+      <div class="row"><span class="label">Updated Status</span><span class="value" style="color: #2563eb; font-weight: bold;">${escapeHtml(newStatus)}</span></div>
+    </div>
+  `;
+
+  const text = `[ADMIN ALERT] Application Status Update:\nCandidate: ${candidateName} (${candidateEmail})\nJob: ${jobTitle} (${companyName})\nTransition: ${previousStatus} -> ${newStatus}\n\nView: ${actionUrl}`;
+
+  return {
+    subject: `[Admin Alert] Status Changed: ${candidateName} (${jobTitle} -> ${newStatus})`,
+    html: wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText: 'View Application' }),
+    text
+  };
+}
+
 module.exports = {
   applicationSubmitted,
   newApplicant,
@@ -748,5 +873,10 @@ module.exports = {
   jobModerated,
   passwordReset,
   welcome,
-  interviewInvitation
+  interviewInvitation,
+  adminNewUserRegistered,
+  adminApplicationSubmitted,
+  adminInterviewBooked,
+  adminInterviewInvited,
+  adminApplicationStatusChanged
 };

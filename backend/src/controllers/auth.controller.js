@@ -129,12 +129,14 @@ const register = asyncHandler(async (req, res) => {
 
   logger.info(`[Auth] Registered new ${role} account: ${user.email} (ID: ${user._id})`);
 
-  // Asynchronously dispatch welcome email (without blocking registration)
+  // Asynchronously dispatch welcome email and admin alert (without blocking registration)
   try {
     const emailService = require('../services/email.service');
     const emailTemplates = require('../templates/emails/emailTemplates');
     const frontendUrl = (Array.isArray(env.FRONTEND_URL) ? env.FRONTEND_URL[0] : env.FRONTEND_URL) || 'https://hireconnect.io';
     const actionUrl = role === 'recruiter' ? `${frontendUrl}/recruiter/dashboard` : `${frontendUrl}/jobs`;
+
+    // 1. Deliver Welcome email to the newly registered user
     const welcomeMail = emailTemplates.welcome({
       recipientName: user.name,
       role: user.role,
@@ -151,8 +153,28 @@ const register = asyncHandler(async (req, res) => {
       .catch((emailErr) => {
         logger.warn(`[Auth] Welcome email async dispatch failed for ${user.email}: ${emailErr.message}`);
       });
+
+    // 2. Deliver Admin registration alert to sabari1082005@gmail.com
+    const adminRecipient = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+    const adminAlertMail = emailTemplates.adminNewUserRegistered({
+      userName: user.name,
+      userEmail: user.email,
+      role: user.role,
+      actionUrl: `${frontendUrl}/admin`
+    });
+
+    emailService
+      .sendEmail({
+        to: adminRecipient,
+        subject: adminAlertMail.subject,
+        html: adminAlertMail.html,
+        text: adminAlertMail.text
+      })
+      .catch((adminErr) => {
+        logger.warn(`[Auth] Admin registration alert dispatch failed: ${adminErr.message}`);
+      });
   } catch (emailErr) {
-    logger.warn(`[Auth] Welcome email scheduling error for ${user.email}: ${emailErr.message}`);
+    logger.warn(`[Auth] Registration notification scheduling error for ${user.email}: ${emailErr.message}`);
   }
 
   return res.status(201).json({

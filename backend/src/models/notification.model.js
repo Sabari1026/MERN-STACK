@@ -13,6 +13,7 @@ const NOTIFICATION_TYPES = [
   'application_withdrawn',
   'new_applicant',
   'interview_booked',
+  'interview_invitation',
   'interview_rescheduled',
   'interview_cancelled',
   'interview_reminder',

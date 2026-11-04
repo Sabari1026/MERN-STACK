@@ -1,106 +1,107 @@
 /**
  * Centralized Email Service for HireConnect
- * Supports:
- * 1. Direct HTTPS REST API delivery via port 443 (e.g. Resend) — immune to cloud provider SMTP port blocking (Render, AWS, GCP free tiers).
- * 2. Genuine SMTP delivery via Nodemailer (e.g. Gmail SMTP, custom SMTP) for local and unblocked cloud environments.
- * 3. Strictly dynamic recipient routing — ZERO fallback redirection to developer inboxes.
- * 4. Reliable transactional outbox processing with exponential backoff.
+ * Powered by Google's Official Gmail API (OAuth 2.0) over HTTPS Port 443
+ *
+ * Requirements:
+ * - Direct HTTPS port 443 communication (100% compatible with Render Free Tier).
+ * - Automatic OAuth 2.0 access token refresh using GMAIL_REFRESH_TOKEN.
+ * - Dynamic recipient delivery with ZERO sandbox redirections.
+ * - Official platform sender: sabari1082005@gmail.com.
+ * - Admin audit recipient: sabari1082005@gmail.com.
  */
 
-const https = require('https');
-const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 const logger = require('../utils/logger');
 const NotificationOutbox = require('../models/notificationOutbox.model');
 
-// Basic RFC 5322 compliant email regex for runtime safety
+// Basic RFC 5322 compliant email regex
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
+/**
+ * Encodes an RFC 2822 email into a base64url string for Gmail API messages.send
+ */
+function buildRawMimeMessage({ from, to, subject, html, text }) {
+  const boundary = `====_HireConnect_${Date.now()}_${Math.random().toString(36).substring(2)}====`;
+  const utf8Subject = `=?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`;
+
+  const lines = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${utf8Subject}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(text || '').toString('base64'),
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(html || '').toString('base64'),
+    '',
+    `--${boundary}--`
+  ];
+
+  return Buffer.from(lines.join('\r\n'))
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
 
 class EmailService {
   constructor() {
-    this.transporter = null;
-    this.isResendHttp = false;
-    this.resendApiKey = null;
+    this.oauth2Client = null;
+    this.gmail = null;
     this.isConfigured = false;
-    this.sentEmails = []; // In-memory audit trail for testing and inspection
+    this.sentEmails = []; // In-memory audit trail for tests and inspection
     this.hasWarnedUnconfigured = false;
 
-    this.initTransporter();
+    this.initProvider();
   }
 
   /**
-   * Initialize email provider from environment variables
+   * Initializes Google OAuth 2.0 client & Gmail API v1
    */
-  initTransporter() {
-    // 1. Automated test mode (vitest / jest): mock adapter to prevent network calls
+  initProvider() {
+    // 1. Automated test mode (vitest / jest): mock adapter prevents network calls
     if (process.env.NODE_ENV === 'test') {
       this.isConfigured = true;
-      this.isResendHttp = false;
-      this.transporter = {
-        sendMail: async (options) => {
-          const messageId = `<mock-${Date.now()}-${Math.random().toString(36).substring(2, 7)}@hireconnect.io>`;
-          this.sentEmails.push({
-            ...options,
-            messageId,
-            sentAt: new Date()
-          });
-          return { messageId, accepted: [options.to], rejected: [], response: '250 OK: Mock message queued' };
-        },
-        verify: async () => true
-      };
+      this.sentEmails = [];
       return;
     }
 
-    const host = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-    const port = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '465', 10);
-    const secure = process.env.SMTP_SECURE !== undefined
-      ? process.env.SMTP_SECURE === 'true'
-      : port === 465;
-    const user = process.env.SMTP_USER || process.env.EMAIL_USER;
-    const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS;
+    const clientId = process.env.GMAIL_CLIENT_ID;
+    const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+    const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+    const redirectUri = process.env.GMAIL_REDIRECT_URI || 'https://developers.google.com/oauthplayground';
 
-    // 2. Direct Resend HTTPS REST API (Port 443)
-    // Used when an active Resend API key is detected or host is smtp.resend.com.
-    // Operates over port 443 (HTTPS) to prevent cloud hosting SMTP port timeouts on Render/AWS.
-    const resendApiKey =
-      process.env.RESEND_API_KEY ||
-      (pass && pass.startsWith('re_') ? pass : null) ||
-      (user && user.startsWith('re_') ? user : null);
-
-    if (resendApiKey) {
-      this.isResendHttp = true;
-      this.resendApiKey = resendApiKey;
-      this.isConfigured = true;
-      logger.info('[EmailService] Configured direct Resend HTTPS REST delivery (port 443 — immune to cloud SMTP blocks)');
-      return;
-    }
-
-    // 3. Standard Nodemailer SMTP (e.g. Gmail SMTP, custom SMTP)
-    if (host && user && pass) {
+    if (clientId && clientSecret && refreshToken) {
       try {
-        this.isResendHttp = false;
-        this.transporter = nodemailer.createTransport({
-          host,
-          port,
-          secure,
-          auth: { user, pass },
-          connectionTimeout: 10000,
-          greetingTimeout: 8000,
-          socketTimeout: 15000,
-          tls: {
-            rejectUnauthorized: process.env.NODE_ENV === 'production'
-          }
+        this.oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+        this.oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+        this.gmail = google.gmail({
+          version: 'v1',
+          auth: this.oauth2Client
         });
+
         this.isConfigured = true;
-        logger.info(`[EmailService] Configured Nodemailer SMTP via ${host}:${port} (secure: ${secure})`);
+        const sender = process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+        logger.info(`[EmailService:GmailAPI] Initialized Gmail API v1 over HTTPS (port 443) for sender: ${sender}`);
       } catch (err) {
-        logger.error(`[EmailService] Failed to initialize SMTP transport: ${err.message}`);
+        logger.error(`[EmailService:GmailAPI] Failed to initialize Google OAuth2 client: ${err.message}`);
         this.isConfigured = false;
       }
     } else {
       this.isConfigured = false;
       if (!this.hasWarnedUnconfigured) {
         logger.warn(
-          '[EmailService] SMTP credentials not configured in environment. Outgoing transactional emails will be recorded to outbox safely.'
+          '[EmailService:GmailAPI] Gmail OAuth 2.0 credentials not yet configured. Outgoing emails will be logged safely to outbox without blocking user operations.'
         );
         this.hasWarnedUnconfigured = true;
       }
@@ -108,132 +109,73 @@ class EmailService {
   }
 
   /**
-   * Verify upstream connection and credentials
+   * Verify Gmail API authentication and connection via HTTPS port 443
    * @returns {Promise<{ success: boolean, message: string, code?: string }>}
    */
   async verifyConnection() {
     if (process.env.NODE_ENV === 'test') {
       return {
         success: true,
-        message: 'SMTP transport is using an active test/mock adapter.'
+        message: 'Gmail API is using active test/mock adapter.'
       };
     }
 
-    if (!this.isConfigured) {
+    if (!this.isConfigured || !this.gmail) {
       return {
         success: false,
-        message: 'Email service is not configured in the environment.'
+        message: 'Gmail API OAuth 2.0 credentials are not fully configured (missing GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, or GMAIL_REFRESH_TOKEN).'
       };
-    }
-
-    // A. Resend HTTPS REST Verification (Port 443)
-    if (this.isResendHttp) {
-      return new Promise((resolve) => {
-        const req = https.request(
-          {
-            hostname: 'api.resend.com',
-            port: 443,
-            path: '/api-keys',
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${this.resendApiKey}`,
-              'User-Agent': 'HireConnect-Backend/1.0'
-            },
-            timeout: 8000
-          },
-          (res) => {
-            if (res.statusCode >= 200 && res.statusCode < 400) {
-              logger.info('[EmailService] Resend HTTPS API credentials verified successfully (port 443).');
-              resolve({
-                success: true,
-                message: 'Resend HTTPS API delivery verified successfully (port 443).'
-              });
-            } else if (res.statusCode === 401 || res.statusCode === 403) {
-              const msg = 'Invalid or expired Resend API Key.';
-              logger.warn(`[EmailService] Resend API verification failed: ${msg}`);
-              resolve({ success: false, message: msg, code: 'INVALID_API_KEY' });
-            } else {
-              resolve({
-                success: true,
-                message: 'Resend HTTPS API endpoint accessible (port 443).'
-              });
-            }
-          }
-        );
-
-        req.on('error', (err) => {
-          logger.warn(`[EmailService] Resend HTTPS connection check error: ${err.message}`);
-          resolve({ success: false, message: err.message, code: 'NETWORK_ERROR' });
-        });
-
-        req.on('timeout', () => {
-          req.destroy();
-          resolve({ success: false, message: 'Resend HTTPS request timeout', code: 'TIMEOUT' });
-        });
-
-        req.end();
-      });
-    }
-
-    // B. Nodemailer SMTP Socket Verification
-    if (!this.transporter) {
-      return { success: false, message: 'SMTP transport is not initialized.' };
     }
 
     try {
-      await this.transporter.verify();
-      logger.info('[EmailService] SMTP server connection and credentials verified successfully.');
+      // Validate by querying profile over HTTPS
+      const profile = await this.gmail.users.getProfile({ userId: 'me' });
+      const email = profile.data.emailAddress || process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+      logger.info(`[EmailService:GmailAPI] Connection verified successfully for account: ${email}`);
       return {
         success: true,
-        message: 'SMTP server connection and credentials verified successfully.'
+        message: `Gmail API (OAuth 2.0) verified successfully for ${email}.`,
+        emailAddress: email
       };
     } catch (err) {
-      const sanitized = logger.redactConnectionString(err.message || 'SMTP connection failed');
-      const isTimeout = err.code === 'ETIMEDOUT' || sanitized.includes('timeout') || sanitized.includes('Connection timeout');
-
-      if (isTimeout) {
-        logger.warn(
-          `[EmailService] SMTP port connection timed out: ${sanitized}. (Note: Cloud hosting like Render Free Tier blocks outbound raw TCP ports 25, 465, and 587. To send emails from Render free tier, use an HTTPS REST API on port 443 such as Resend, Brevo, or SendGrid).`
-        );
-      } else {
-        logger.error(`[EmailService] SMTP verification failed: ${sanitized}`);
-      }
-
+      const sanitized = logger.redactConnectionString(err.message || 'Gmail API verification failed');
+      logger.error(`[EmailService:GmailAPI] OAuth2 verification failed: ${sanitized}`);
       return {
         success: false,
-        message: isTimeout
-          ? 'SMTP connection timed out. Outbound SMTP ports (465/587) may be blocked by your hosting provider.'
-          : sanitized,
-        code: err.code || 'SMTP_VERIFICATION_FAILED'
+        message: sanitized,
+        code: err.code || 'GMAIL_AUTH_FAILED'
       };
     }
   }
 
   /**
-   * Get safe configuration status (never leaks passwords or API keys)
+   * Returns safe configuration status (never leaks client secret or refresh token)
    */
   getStatus() {
-    const host = process.env.SMTP_HOST || (this.isResendHttp ? 'api.resend.com (HTTPS Port 443)' : 'smtp.gmail.com');
-    const port = this.isResendHttp ? 443 : parseInt(process.env.SMTP_PORT || '465', 10);
-    const user = process.env.SMTP_USER || null;
+    const sender = process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+    const admin = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
     return {
       configured: this.isConfigured,
-      mode: this.isResendHttp ? 'https-api' : 'smtp',
-      host,
-      port,
-      secure: this.isResendHttp ? true : (process.env.SMTP_SECURE === 'true' || port === 465),
-      fromAddress: process.env.EMAIL_FROM || (user ? `HireConnect <${user}>` : 'HireConnect <onboarding@resend.dev>')
+      provider: 'gmail-api',
+      protocol: 'https',
+      port: 443,
+      sender,
+      adminRecipient: admin,
+      hasClientId: Boolean(process.env.GMAIL_CLIENT_ID),
+      hasClientSecret: Boolean(process.env.GMAIL_CLIENT_SECRET),
+      hasRefreshToken: Boolean(process.env.GMAIL_REFRESH_TOKEN)
     };
   }
 
   /**
-   * Sends a transactional email strictly to the dynamic intended recipient
+   * Sends a transactional email strictly to the dynamic recipient using Gmail API
    * Never redirects to a developer or fallback inbox
    * @param {object} mailOptions { to, subject, html, text, from }
    * @returns {Promise<{ success: boolean, messageId?: string, error?: string, code?: string }>}
    */
   async sendEmail({ to, subject, html, text, from }) {
-    const fromAddress = from || process.env.EMAIL_FROM || 'HireConnect <onboarding@resend.dev>';
+    const senderEmail = process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+    const fromAddress = from || `HireConnect <${senderEmail}>`;
 
     // 1. Validate required fields
     if (!to || !subject || (!html && !text)) {
@@ -247,13 +189,13 @@ class EmailService {
     const cleanTo = String(to).trim();
     if (!cleanTo || !EMAIL_REGEX.test(cleanTo)) {
       const err = `Invalid recipient email address format: "${cleanTo}"`;
-      logger.warn(`[EmailService] ${err}`);
+      logger.warn(`[EmailService:GmailAPI] ${err}`);
       return { success: false, error: err, code: 'INVALID_RECIPIENT' };
     }
 
     // 3. Automated test mode: record in-memory and return immediately
     if (process.env.NODE_ENV === 'test') {
-      const messageId = `<test-${Date.now()}@hireconnect.io>`;
+      const messageId = `<mock-gmail-${Date.now()}@hireconnect.io>`;
       this.sentEmails.push({
         to: cleanTo,
         from: fromAddress,
@@ -266,9 +208,9 @@ class EmailService {
       return { success: true, messageId, accepted: [cleanTo], rejected: [] };
     }
 
-    // 4. Safe fallback when email provider is unconfigured in development
-    if (!this.isConfigured) {
-      logger.info(`[EmailService:Unconfigured] Outgoing email to ${cleanTo}: "${subject}" (Simulated - provider unconfigured)`);
+    // 4. Safe fallback when provider is unconfigured in local dev
+    if (!this.isConfigured || !this.gmail) {
+      logger.info(`[EmailService:Unconfigured] Dispatched email to ${cleanTo}: "${subject}" (Simulated - Gmail OAuth unconfigured)`);
       this.sentEmails.push({
         to: cleanTo,
         from: fromAddress,
@@ -280,23 +222,14 @@ class EmailService {
       });
       return {
         success: false,
-        error: 'Email provider unconfigured. Logged to outbox safely.',
+        error: 'Gmail API unconfigured. Logged to outbox safely.',
         unconfigured: true
       };
     }
 
-    // 5. Option A: Direct Resend HTTPS REST API Delivery (Port 443)
-    if (this.isResendHttp) {
-      return this.sendViaResendHttp({ to: cleanTo, subject, html, text, fromAddress });
-    }
-
-    // 6. Option B: Genuine Nodemailer SMTP Delivery (Port 465 / 587)
-    if (!this.transporter) {
-      return { success: false, error: 'SMTP transport not initialized.', code: 'SMTP_UNAVAILABLE' };
-    }
-
+    // 5. Genuine delivery via Google's official Gmail API v1 (HTTPS Port 443)
     try {
-      const info = await this.transporter.sendMail({
+      const raw = buildRawMimeMessage({
         from: fromAddress,
         to: cleanTo,
         subject,
@@ -304,118 +237,40 @@ class EmailService {
         text
       });
 
+      const res = await this.gmail.users.messages.send({
+        userId: 'me',
+        requestBody: { raw }
+      });
+
+      const messageId = res.data?.id || `gmail-${Date.now()}`;
+
       this.sentEmails.push({
         to: cleanTo,
         from: fromAddress,
         subject,
-        messageId: info.messageId,
+        messageId,
         sentAt: new Date()
       });
 
-      logger.info(`[EmailService:SMTP] Delivered email to ${cleanTo} (MessageId: ${info.messageId})`);
+      logger.info(`[EmailService:GmailAPI] Successfully delivered email to ${cleanTo} (MessageId: ${messageId})`);
       return {
         success: true,
-        messageId: info.messageId,
-        accepted: info.accepted || [cleanTo],
-        rejected: info.rejected || []
+        messageId,
+        threadId: res.data?.threadId,
+        accepted: [cleanTo],
+        rejected: []
       };
     } catch (err) {
-      const safeErrMsg = logger.redactConnectionString(err.message || 'SMTP transmission error');
-      logger.error(`[EmailService:SMTP] Delivery failed to ${cleanTo}: ${safeErrMsg}`);
+      const safeErrMsg = logger.redactConnectionString(err.message || 'Gmail API transmission error');
+      logger.error(`[EmailService:GmailAPI] Delivery failed to ${cleanTo}: ${safeErrMsg}`);
 
       // STRICT REQUIREMENT: Zero fallback redirection. Report failure cleanly to caller.
       return {
         success: false,
         error: safeErrMsg,
-        code: err.code || 'SMTP_ERROR'
+        code: err.code || 'GMAIL_API_ERROR'
       };
     }
-  }
-
-  /**
-   * Direct Resend HTTPS REST API delivery via port 443
-   * Immune to cloud provider SMTP port blocking (Render, AWS, Heroku)
-   * Strictly delivers to `to` — NEVER redirects to developer fallback
-   */
-  async sendViaResendHttp({ to, subject, html, text, fromAddress }) {
-    const postPayload = (payloadObj) => {
-      return new Promise((resolve) => {
-        const payload = JSON.stringify(payloadObj);
-        const req = https.request(
-          {
-            hostname: 'api.resend.com',
-            port: 443,
-            path: '/emails',
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${this.resendApiKey}`,
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(payload)
-            },
-            timeout: 10000
-          },
-          (res) => {
-            let body = '';
-            res.on('data', (chunk) => {
-              body += chunk;
-            });
-            res.on('end', () => {
-              try {
-                const json = JSON.parse(body || '{}');
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                  resolve({ success: true, messageId: json.id });
-                } else {
-                  resolve({
-                    success: false,
-                    status: res.statusCode,
-                    error: json.message || json.name || `Resend HTTP ${res.statusCode}`
-                  });
-                }
-              } catch (e) {
-                resolve({ success: false, error: body || 'Invalid Resend API response' });
-              }
-            });
-          }
-        );
-
-        req.on('error', (err) => resolve({ success: false, error: err.message }));
-        req.on('timeout', () => {
-          req.destroy();
-          resolve({ success: false, error: 'Resend HTTPS API request timeout' });
-        });
-        req.write(payload);
-        req.end();
-      });
-    };
-
-    const result = await postPayload({
-      from: fromAddress,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-      text
-    });
-
-    if (result.success) {
-      this.sentEmails.push({
-        to,
-        from: fromAddress,
-        subject,
-        messageId: result.messageId,
-        sentAt: new Date()
-      });
-      logger.info(`[EmailService:ResendHTTP] Delivered email to ${to} (MessageId: ${result.messageId})`);
-      return { success: true, messageId: result.messageId };
-    }
-
-    // STRICT REQUIREMENT: Report provider error cleanly. Never redirect to personal inbox.
-    logger.error(`[EmailService:ResendHTTP] Delivery failed to ${to}: ${result.error}`);
-    return {
-      success: false,
-      error: result.error,
-      statusCode: result.status,
-      code: result.status === 403 ? 'PROVIDER_SANDBOX_RESTRICTION' : 'PROVIDER_ERROR'
-    };
   }
 
   /**
@@ -458,12 +313,12 @@ class EmailService {
         item.lastError = result.error || 'Unknown delivery failure';
         if (item.attempts >= item.maxAttempts) {
           item.status = 'failed';
-          logger.warn(`[EmailService] Outbox event ${item.eventId} reached max attempts (${item.maxAttempts}). Marked as permanently failed.`);
+          logger.warn(`[EmailService:GmailAPI] Outbox event ${item.eventId} reached max attempts (${item.maxAttempts}). Marked as permanently failed.`);
         } else {
           item.status = 'retry_scheduled';
           const backoffMinutes = Math.pow(2, item.attempts - 1);
           item.nextRetryAt = new Date(Date.now() + backoffMinutes * 60000);
-          logger.info(`[EmailService] Outbox event ${item.eventId} scheduled for retry #${item.attempts} in ${backoffMinutes} minute(s).`);
+          logger.info(`[EmailService:GmailAPI] Outbox event ${item.eventId} scheduled for retry #${item.attempts} in ${backoffMinutes} minute(s).`);
         }
         await item.save();
         failed++;

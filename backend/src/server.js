@@ -97,20 +97,20 @@ async function startServer() {
         reminderService.startScheduler();
       }
 
-      // Verify SMTP service connection asynchronously if configured
+      // Verify Gmail API OAuth 2.0 connection asynchronously
       if (env.NODE_ENV !== 'test') {
         const emailService = require('./services/email.service');
         emailService
           .verifyConnection()
           .then((res) => {
             if (res.success) {
-              logger.info('[EmailService] SMTP verification succeeded during startup.');
+              logger.info(`[EmailService:GmailAPI] ${res.message}`);
             } else {
-              logger.warn(`[EmailService] SMTP status on startup: ${res.message}`);
+              logger.warn(`[EmailService:GmailAPI] Status on startup: ${res.message}`);
             }
           })
           .catch((err) => {
-            logger.warn(`[EmailService] Startup SMTP check encountered an issue: ${err.message}`);
+            logger.warn(`[EmailService:GmailAPI] Startup check encountered an issue: ${err.message}`);
           });
       }
     });

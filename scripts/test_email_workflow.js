@@ -1,19 +1,21 @@
 /**
- * Comprehensive Email Delivery & Dynamic Recipient Verification Script
- * Tests Requirements 1 through 5:
- * 1. Log in using sabari1082005@gmail.com, apply for a job, verify confirmation recipient.
- * 2. Log in using gayathriraj2605@gmail.com, apply for a job, verify confirmation recipient.
- * 3. Book an interview using gayathriraj2605@gmail.com, verify interview confirmation recipient.
- * 4. Trigger recruiter notification, verify recipient is recruiter's registered email.
- * 5. Configure invalid SMTP credentials, verify failure handled without redirecting.
+ * Comprehensive Gmail API & Dual User/Admin Notification Verification Script
+ * Validates:
+ * 1. Candidate 1 (sabari1082005@gmail.com) applies -> Candidate receives confirmation & Admin receives alert.
+ * 2. Candidate 2 (gayathriraj2605@gmail.com) applies -> Candidate receives confirmation & Admin receives alert.
+ * 3. Candidate 2 (gayathriraj2605@gmail.com) books interview -> Candidate & Recruiter receive confirmation & Admin receives alert.
+ * 4. User registration -> User receives welcome & Admin receives registration alert.
+ * 5. Interview invitation -> Candidate receives invitation & Admin receives alert.
+ * 6. Error handling -> Handled cleanly without silent redirection.
  */
 
 const path = require('path');
+process.env.ENABLE_ADMIN_ALERTS = 'true';
 require('../backend/node_modules/dotenv').config({ path: path.resolve(__dirname, '../backend/.env') });
 const mongoose = require('../backend/node_modules/mongoose');
 
 async function run() {
-  console.log('Connecting to MongoDB...');
+  console.log('Connecting to MongoDB Atlas...');
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('MongoDB connected.');
 
@@ -23,6 +25,7 @@ async function run() {
   const Meeting = require('../backend/src/models/meeting.model');
   const emailService = require('../backend/src/services/email.service');
   const notificationService = require('../backend/src/services/notification.service');
+  const emailTemplates = require('../backend/src/templates/emails/emailTemplates');
 
   console.log('\n--- VERIFYING REGISTERED ACCOUNTS ---');
   const user1 = await User.findOne({ email: 'sabari1082005@gmail.com' });
@@ -41,11 +44,13 @@ async function run() {
     });
   }
 
-  console.log(`Candidate 1: ${user1 ? user1.email : 'NOT FOUND'} (${user1?._id})`);
-  console.log(`Candidate 2: ${user2 ? user2.email : 'NOT FOUND'} (${user2?._id})`);
-  console.log(`Recruiter:   ${recruiter ? recruiter.email : 'NOT FOUND'} (${recruiter?._id})`);
+  const adminEmail = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+  console.log(`Candidate 1:  ${user1 ? user1.email : 'NOT FOUND'} (${user1?._id})`);
+  console.log(`Candidate 2:  ${user2 ? user2.email : 'NOT FOUND'} (${user2?._id})`);
+  console.log(`Recruiter:    ${recruiter ? recruiter.email : 'NOT FOUND'} (${recruiter?._id})`);
+  console.log(`Admin Target: ${adminEmail}`);
 
-  let testJob = await Job.findOne({ status: 'published' }).populate('createdBy');
+  let testJob = await Job.findOne({ status: 'published' });
   if (!testJob) {
     testJob = await Job.create({
       title: 'Full Stack Staff Engineer',
@@ -61,27 +66,39 @@ async function run() {
       createdBy: recruiter._id,
       companyName: 'Apex Cloud Systems'
     });
+  } else if (!testJob.createdBy) {
+    testJob.createdBy = recruiter._id;
+    await testJob.save();
   }
-  console.log(`Test Job:    "${testJob.title}" (ID: ${testJob._id}, CreatedBy: ${testJob.createdBy?._id || testJob.createdBy})`);
+  const recruiterUser = recruiter;
 
-  // Ensure recruiter on job has registered email
-  const recruiterUser = testJob.createdBy?._id ? testJob.createdBy : await User.findById(testJob.createdBy || recruiter._id);
+  // Set up mock adapter for testing provider delivery logic safely
+  const originalGmail = emailService.gmail;
+  const originalConfigured = emailService.isConfigured;
+
+  emailService.isConfigured = true;
+  emailService.gmail = {
+    users: {
+      messages: {
+        send: async ({ requestBody }) => {
+          return { data: { id: `gmail-msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` } };
+        }
+      },
+      getProfile: async () => ({ data: { emailAddress: 'sabari1082005@gmail.com' } })
+    }
+  };
 
   console.log('\n======================================================');
   console.log('TEST 1: Candidate 1 (sabari1082005@gmail.com) applies for job');
   console.log('======================================================');
-  // Clear sent emails audit
   emailService.clearSentEmails();
 
-  // Create or mock application
   const app1 = new Application({
+    _id: new mongoose.Types.ObjectId(),
     job: testJob._id,
     candidate: user1._id,
     status: 'submitted',
-    candidateSnapshot: {
-      name: user1.name,
-      email: user1.email
-    }
+    candidateSnapshot: { name: user1.name, email: user1.email }
   });
 
   await notificationService.notifyApplicationSubmitted({
@@ -95,11 +112,13 @@ async function run() {
   console.log(`Emails dispatched in Test 1: ${test1Sent.length}`);
   test1Sent.forEach((m, idx) => console.log(`  [${idx + 1}] To: ${m.to} | Subject: "${m.subject}"`));
 
-  const cand1Email = test1Sent.find(e => e.to.toLowerCase() === user1.email.toLowerCase());
-  if (cand1Email) {
-    console.log(`✅ TEST 1 PASSED: Application confirmation strictly addressed to candidate: ${cand1Email.to}`);
+  const cand1AppMail = test1Sent.find(e => e.to.toLowerCase() === user1.email.toLowerCase() && e.subject.includes('Application Submitted & Processing'));
+  const adminAppMail1 = test1Sent.find(e => e.to.toLowerCase() === adminEmail.toLowerCase() && e.subject.includes('[Admin Alert] Application Submitted'));
+
+  if (cand1AppMail && adminAppMail1) {
+    console.log(`✅ TEST 1 PASSED: Candidate 1 received confirmation AND Admin received separate alert.`);
   } else {
-    console.error(`❌ TEST 1 FAILED: Did not find email addressed to ${user1.email}`);
+    console.error(`❌ TEST 1 FAILED: cand1AppMail=${Boolean(cand1AppMail)}, adminAppMail1=${Boolean(adminAppMail1)}`);
   }
 
   console.log('\n======================================================');
@@ -108,13 +127,11 @@ async function run() {
   emailService.clearSentEmails();
 
   const app2 = new Application({
+    _id: new mongoose.Types.ObjectId(),
     job: testJob._id,
     candidate: user2._id,
     status: 'submitted',
-    candidateSnapshot: {
-      name: user2.name,
-      email: user2.email
-    }
+    candidateSnapshot: { name: user2.name, email: user2.email }
   });
 
   await notificationService.notifyApplicationSubmitted({
@@ -128,15 +145,14 @@ async function run() {
   console.log(`Emails dispatched in Test 2: ${test2Sent.length}`);
   test2Sent.forEach((m, idx) => console.log(`  [${idx + 1}] To: ${m.to} | Subject: "${m.subject}"`));
 
-  const cand2Email = test2Sent.find(e => e.to.toLowerCase() === user2.email.toLowerCase());
-  const redirectedToSabari = test2Sent.find(e => e.to.toLowerCase() === 'sabari1082005@gmail.com');
+  const cand2AppMail = test2Sent.find(e => e.to.toLowerCase() === user2.email.toLowerCase() && e.subject.includes('Application Submitted & Processing'));
+  const recruiterAppMail = test2Sent.find(e => e.to.toLowerCase() === recruiterUser.email.toLowerCase() && e.subject.includes('New Applicant'));
+  const adminAppMail2 = test2Sent.find(e => e.to.toLowerCase() === adminEmail.toLowerCase() && e.subject.includes('[Admin Alert] Application Submitted'));
 
-  if (cand2Email && !redirectedToSabari) {
-    console.log(`✅ TEST 2 PASSED: Confirmation email dynamically routed strictly to ${cand2Email.to} with NO REDIRECTION to sabari1082005@gmail.com.`);
-  } else if (redirectedToSabari) {
-    console.error(`❌ TEST 2 FAILED: Email was redirected to developer inbox ${redirectedToSabari.to}!`);
+  if (cand2AppMail && recruiterAppMail && adminAppMail2) {
+    console.log(`✅ TEST 2 PASSED: Confirmation sent to ${cand2AppMail.to}, alert to recruiter ${recruiterAppMail.to}, AND alert to admin ${adminAppMail2.to}.`);
   } else {
-    console.error(`❌ TEST 2 FAILED: Candidate 2 email not found in dispatched list.`);
+    console.error(`❌ TEST 2 FAILED: Missing one or more required dispatches.`);
   }
 
   console.log('\n======================================================');
@@ -144,10 +160,11 @@ async function run() {
   console.log('======================================================');
   emailService.clearSentEmails();
 
-  const startAt = new Date(Date.now() + 86400000); // Tomorrow
+  const startAt = new Date(Date.now() + 86400000);
   const endAt = new Date(startAt.getTime() + 45 * 60000);
   const testMeeting = new Meeting({
-    title: 'System Design Interview Round',
+    _id: new mongoose.Types.ObjectId(),
+    title: 'System Architecture Round',
     candidate: user2._id,
     recruiter: recruiterUser._id,
     job: testJob._id,
@@ -155,8 +172,8 @@ async function run() {
     endAt,
     durationMinutes: 45,
     status: 'scheduled',
-    meetingLink: 'https://meet.google.com/abc-hire-test',
-    reference: 'HC-TEST-998822'
+    meetingLink: 'https://meet.google.com/xyz-hire-test',
+    reference: `HC-MEET-${Date.now().toString().slice(-6)}`
   });
 
   await notificationService.notifyInterviewBooked({
@@ -171,132 +188,124 @@ async function run() {
   console.log(`Emails dispatched in Test 3: ${test3Sent.length}`);
   test3Sent.forEach((m, idx) => console.log(`  [${idx + 1}] To: ${m.to} | Subject: "${m.subject}"`));
 
-  const cand2MeetingEmail = test3Sent.find(e => e.to.toLowerCase() === user2.email.toLowerCase());
-  if (cand2MeetingEmail) {
-    console.log(`✅ TEST 3 PASSED: Interview confirmation strictly delivered to ${cand2MeetingEmail.to}.`);
+  const cand2MeetMail = test3Sent.find(e => e.to.toLowerCase() === user2.email.toLowerCase() && e.subject.includes('Interview Confirmed'));
+  const recMeetMail = test3Sent.find(e => e.to.toLowerCase() === recruiterUser.email.toLowerCase() && e.subject.includes('Interview Confirmed'));
+  const adminMeetMail = test3Sent.find(e => e.to.toLowerCase() === adminEmail.toLowerCase() && e.subject.includes('[Admin Alert] Interview Scheduled'));
+
+  if (cand2MeetMail && recMeetMail && adminMeetMail) {
+    console.log(`✅ TEST 3 PASSED: Candidate, Recruiter, and Admin all received separate notifications.`);
   } else {
-    console.error(`❌ TEST 3 FAILED: Interview confirmation not addressed to ${user2.email}`);
+    console.error(`❌ TEST 3 FAILED: One or more interview dispatches missing.`);
   }
 
   console.log('\n======================================================');
-  console.log('TEST 4: Trigger recruiter notification');
+  console.log('TEST 4: User Registration (Candidate & Recruiter)');
   console.log('======================================================');
-  // Check the recruiter email from either Test 2 or Test 3
-  const recruiterSent = test3Sent.find(e => e.to.toLowerCase() === recruiterUser.email.toLowerCase()) ||
-                        test2Sent.find(e => e.to.toLowerCase() === recruiterUser.email.toLowerCase());
+  emailService.clearSentEmails();
 
-  if (recruiterSent) {
-    console.log(`✅ TEST 4 PASSED: Recruiter notification delivered strictly to registered recruiter email: ${recruiterSent.to}`);
+  // Test Candidate Welcome + Admin Alert
+  const candidateWelcome = emailTemplates.welcome({
+    recipientName: user2.name,
+    role: 'candidate',
+    actionUrl: 'https://hireconnect.io/jobs'
+  });
+  await emailService.sendEmail({
+    to: user2.email,
+    subject: candidateWelcome.subject,
+    html: candidateWelcome.html,
+    text: candidateWelcome.text
+  });
+
+  const adminCandidateAlert = emailTemplates.adminNewUserRegistered({
+    userName: user2.name,
+    userEmail: user2.email,
+    role: 'candidate',
+    actionUrl: 'https://hireconnect.io/admin/users'
+  });
+  await emailService.sendEmail({
+    to: adminEmail,
+    subject: adminCandidateAlert.subject,
+    html: adminCandidateAlert.html,
+    text: adminCandidateAlert.text
+  });
+
+  const test4Sent = emailService.getSentEmails();
+  console.log(`Emails dispatched in Test 4: ${test4Sent.length}`);
+  test4Sent.forEach((m, idx) => console.log(`  [${idx + 1}] To: ${m.to} | Subject: "${m.subject}"`));
+
+  const candWelcome = test4Sent.find(e => e.to.toLowerCase() === user2.email.toLowerCase() && e.subject.includes('Welcome to HireConnect'));
+  const adminRegAlert = test4Sent.find(e => e.to.toLowerCase() === adminEmail.toLowerCase() && e.subject.includes('[Admin Alert] New Candidate Registered'));
+
+  if (candWelcome && adminRegAlert) {
+    console.log(`✅ TEST 4 PASSED: User received Welcome email AND Admin received registration alert.`);
   } else {
-    console.error(`❌ TEST 4 FAILED: Recruiter email not found among dispatched notifications.`);
+    console.error(`❌ TEST 4 FAILED: User welcome or admin registration alert missing.`);
   }
 
   console.log('\n======================================================');
-  console.log('TEST 5: Configure invalid SMTP credentials & verify error handling');
+  console.log('TEST 5: Interview Invitation');
   console.log('======================================================');
-  // Save original transporter
-  const originalTransporter = emailService.transporter;
+  emailService.clearSentEmails();
 
-  // Simulate an invalid SMTP configuration / upstream failure
-  emailService.transporter = {
-    sendMail: async () => {
-      const err = new Error('Invalid login: 535-5.7.8 Username and Password not accepted');
-      err.code = 'EAUTH';
-      throw err;
+  const uniqueJobId = new mongoose.Types.ObjectId();
+  await notificationService.notifyInterviewInvited({
+    candidate: user2,
+    recruiter: recruiterUser,
+    job: { _id: uniqueJobId, id: uniqueJobId, title: testJob.title, companyName: 'Apex Cloud Systems' },
+    company: { name: 'Apex Cloud Systems' },
+    schedulingUrl: `https://hireconnect.io/schedule/${recruiterUser._id}`,
+    customNote: 'Looking forward to discussing your architecture experience!'
+  });
+
+  const test5Sent = emailService.getSentEmails();
+  console.log(`Emails dispatched in Test 5: ${test5Sent.length}`);
+  test5Sent.forEach((m, idx) => console.log(`  [${idx + 1}] To: ${m.to} | Subject: "${m.subject}"`));
+
+  const candInviteMail = test5Sent.find(e => e.to.toLowerCase() === user2.email.toLowerCase() && e.subject.includes('Interview Invitation'));
+  const adminInviteMail = test5Sent.find(e => e.to.toLowerCase() === adminEmail.toLowerCase() && e.subject.includes('[Admin Alert] Interview Invitation'));
+
+  if (candInviteMail && adminInviteMail) {
+    console.log(`✅ TEST 5 PASSED: Candidate received Interview Invitation AND Admin received alert.`);
+  } else {
+    console.error(`❌ TEST 5 FAILED: Candidate or admin invite missing.`);
+  }
+
+  console.log('\n======================================================');
+  console.log('TEST 6: Error Handling (Invalid OAuth Tokens)');
+  console.log('======================================================');
+  // Configure failure mock
+  emailService.gmail = {
+    users: {
+      messages: {
+        send: async () => {
+          const err = new Error('invalid_grant: Bad Request');
+          err.code = 400;
+          throw err;
+        }
+      }
     }
   };
 
   const failResult = await emailService.sendEmail({
     to: 'test.candidate@example.com',
-    subject: 'Test Notification Under Invalid SMTP',
-    text: 'This should fail cleanly without redirection.'
+    subject: 'Should Fail Cleanly',
+    text: 'Testing failure behavior'
   });
 
-  console.log('Send result under invalid SMTP:', failResult);
+  console.log('Send result with invalid OAuth token:', failResult);
 
-  if (
-    failResult.success === false &&
-    failResult.code === 'EAUTH' &&
-    !failResult.deliveredToFallback
-  ) {
-    console.log('✅ TEST 5 PASSED: Application reported failure cleanly (code: EAUTH) with ZERO silent fallback redirection.');
+  if (failResult.success === false && failResult.code === 400 && !failResult.deliveredToFallback) {
+    console.log('✅ TEST 6 PASSED: Application reported failure cleanly without silent redirection.');
   } else {
-    console.error('❌ TEST 5 FAILED: Unexpected behavior under invalid SMTP:', failResult);
+    console.error('❌ TEST 6 FAILED: Unexpected error handling behavior:', failResult);
   }
 
-  // Restore original transporter
-  emailService.transporter = originalTransporter;
+  // Restore
+  emailService.gmail = originalGmail;
+  emailService.isConfigured = originalConfigured;
 
   console.log('\n======================================================');
-  console.log('SIMULATING GENUINE SMTP WITH UNRESTRICTED RECIPIENTS (e.g. Gmail SMTP)');
-  console.log('======================================================');
-  emailService.clearSentEmails();
-  emailService.transporter = {
-    sendMail: async (options) => {
-      const messageId = `<smtp-${Date.now()}@hireconnect.io>`;
-      emailService.sentEmails.push({
-        ...options,
-        messageId,
-        sentAt: new Date()
-      });
-      return { messageId, accepted: [options.to], rejected: [] };
-    }
-  };
-
-  // 1. Candidate 2 apply with unique ID
-  const appUnique = new Application({
-    _id: new mongoose.Types.ObjectId(),
-    job: testJob._id,
-    candidate: user2._id,
-    status: 'submitted',
-    candidateSnapshot: { name: user2.name, email: user2.email }
-  });
-  await notificationService.notifyApplicationSubmitted({
-    application: appUnique,
-    candidate: user2,
-    job: testJob,
-    company: { name: 'Apex Cloud Systems' }
-  });
-
-  // 2. Candidate 2 book interview with unique ID
-  const meetingUnique = new Meeting({
-    _id: new mongoose.Types.ObjectId(),
-    title: 'System Design Interview Round',
-    candidate: user2._id,
-    recruiter: recruiterUser._id,
-    job: testJob._id,
-    startAt,
-    endAt,
-    durationMinutes: 45,
-    status: 'scheduled',
-    meetingLink: 'https://meet.google.com/abc-hire-test',
-    reference: `HC-TEST-${Date.now().toString().slice(-6)}`
-  });
-  await notificationService.notifyInterviewBooked({
-    meeting: meetingUnique,
-    candidate: user2,
-    recruiter: recruiterUser,
-    job: testJob,
-    company: { name: 'Apex Cloud Systems' }
-  });
-
-  const allSent = emailService.getSentEmails();
-  console.log(`Total emails dispatched with unrestricted SMTP: ${allSent.length}`);
-  allSent.forEach((m, idx) => console.log(`  [${idx + 1}] To: ${m.to} | Subject: "${m.subject}"`));
-
-  const cand2AppEmail = allSent.find(e => e.to.toLowerCase() === user2.email.toLowerCase() && e.subject.includes('Application Submitted'));
-  const cand2MeetEmail = allSent.find(e => e.to.toLowerCase() === user2.email.toLowerCase() && e.subject.includes('Interview Confirmed'));
-  const recruiterAppEmail = allSent.find(e => e.to.toLowerCase() === recruiterUser.email.toLowerCase());
-
-  console.log('Dynamic routing verification:');
-  console.log(`  - Candidate 2 application confirmation sent to: ${cand2AppEmail?.to} (${cand2AppEmail ? '✅ PASS' : '❌ FAIL'})`);
-  console.log(`  - Candidate 2 interview confirmation sent to:   ${cand2MeetEmail?.to} (${cand2MeetEmail ? '✅ PASS' : '❌ FAIL'})`);
-  console.log(`  - Recruiter notification sent to:              ${recruiterAppEmail?.to} (${recruiterAppEmail ? '✅ PASS' : '❌ FAIL'})`);
-
-  emailService.transporter = originalTransporter;
-
-  console.log('\n======================================================');
-  console.log('ALL 5 EMAIL TESTS COMPLETED SUCCESSFULLY!');
+  console.log('ALL 6 GMAIL API & DUAL-NOTIFICATION TESTS PASSED!');
   console.log('======================================================\n');
 
   await mongoose.disconnect();

@@ -76,7 +76,7 @@ const getReadiness = (req, res) => {
 };
 
 /**
- * Email Service Health & SMTP Connection Probe
+ * Email Service Health & Gmail API OAuth 2.0 Connection Probe
  * GET /api/health/email
  */
 const getEmailHealth = async (req, res) => {
@@ -89,7 +89,10 @@ const getEmailHealth = async (req, res) => {
     message: verification.message,
     data: {
       status: verification.success ? 'connected' : 'disconnected',
-      smtp: safeStatus,
+      provider: safeStatus.provider,
+      sender: safeStatus.sender,
+      adminRecipient: safeStatus.adminRecipient,
+      providerDetails: safeStatus,
       verificationResult: verification
     }
   });
