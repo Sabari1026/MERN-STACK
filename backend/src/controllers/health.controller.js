@@ -98,9 +98,28 @@ const getEmailHealth = async (req, res) => {
   });
 };
 
+/**
+ * Send controlled test email probe
+ * POST /api/health/email/test
+ */
+const sendTestEmail = async (req, res) => {
+  const emailService = require('../services/email.service');
+  const recipient = req.body?.to || process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+
+  const result = await emailService.sendTestEmail(recipient);
+  return res.status(result.success ? 200 : 500).json({
+    success: result.success,
+    message: result.success
+      ? `Test email delivered successfully to ${recipient}`
+      : `Failed to deliver test email: ${result.error}`,
+    data: result
+  });
+};
+
 module.exports = {
   getHealth,
   getLiveness,
   getReadiness,
-  getEmailHealth
+  getEmailHealth,
+  sendTestEmail
 };
