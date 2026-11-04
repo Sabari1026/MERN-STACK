@@ -332,12 +332,31 @@ class NotificationService {
     const baseUrl = this.getFrontendUrl();
     const actionUrl = `/meetings/${mId}`;
 
+    const jobTitle =
+      (job && job.title) ||
+      (meeting.job && meeting.job.title) ||
+      'Software Engineering Position';
+
+    const companyName =
+      (company && company.name) ||
+      (job && job.companyName) ||
+      (job && job.company && job.company.name) ||
+      (meeting.company && meeting.company.name) ||
+      'HireConnect Partner';
+
+    const reference = meeting.reference || `HC-MEET-${Math.floor(100000 + Math.random() * 900000)}`;
+    const durationMinutes = meeting.durationMinutes || 45;
+
     // 1. Notify Candidate
     const candEmail = emailTemplates.interviewBooked({
       recipientName: candidate.name,
       otherParticipantName: recruiter.name || 'Recruiter',
       role: 'candidate',
+      jobTitle,
+      companyName,
       meetingTitle,
+      meetingReference: reference,
+      durationMinutes,
       dateStr,
       timeSlotStr,
       timeZone,
@@ -349,12 +368,12 @@ class NotificationService {
       recipientId: candId,
       type: 'interview_booked',
       title: 'Interview Scheduled',
-      message: `Your interview "${meetingTitle}" with ${recruiter.name || 'the recruiter'} is confirmed for ${dateStr}.`,
+      message: `Your interview "${meetingTitle}" for ${jobTitle} at ${companyName} is confirmed for ${dateStr}.`,
       resourceType: 'meeting',
       resourceId: mId,
       actionUrl,
       deduplicationKey: `interview_booked:${mId}:${candId}`,
-      metadata: { meetingTitle, dateStr, timeSlotStr, timeZone, videoUrl: meeting.meetingLink },
+      metadata: { meetingTitle, jobTitle, companyName, dateStr, timeSlotStr, timeZone, videoUrl: meeting.meetingLink },
       emailOptions: candEmail
     });
 
@@ -363,7 +382,11 @@ class NotificationService {
       recipientName: recruiter.name,
       otherParticipantName: candidate.name || 'Candidate',
       role: 'recruiter',
+      jobTitle,
+      companyName,
       meetingTitle,
+      meetingReference: reference,
+      durationMinutes,
       dateStr,
       timeSlotStr,
       timeZone,
@@ -375,12 +398,12 @@ class NotificationService {
       recipientId: recId,
       type: 'interview_booked',
       title: 'New Interview Booked',
-      message: `${candidate.name || 'A candidate'} booked "${meetingTitle}" for ${dateStr} at ${timeSlotStr}.`,
+      message: `${candidate.name || 'A candidate'} booked "${meetingTitle}" for ${jobTitle} on ${dateStr} at ${timeSlotStr}.`,
       resourceType: 'meeting',
       resourceId: mId,
       actionUrl,
       deduplicationKey: `interview_booked:${mId}:${recId}`,
-      metadata: { meetingTitle, dateStr, timeSlotStr, timeZone, videoUrl: meeting.meetingLink },
+      metadata: { meetingTitle, jobTitle, companyName, dateStr, timeSlotStr, timeZone, videoUrl: meeting.meetingLink },
       emailOptions: recEmail
     });
   }

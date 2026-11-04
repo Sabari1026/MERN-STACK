@@ -506,6 +506,25 @@ class SchedulingService {
         if (jobDoc) companyDoc = jobDoc.company;
       }
 
+      // If no explicit job was provided, link candidate's most recent active application
+      if (!jobDoc && candidateId) {
+        const recentApp = await Application.findOne({ candidate: candidateId })
+          .sort({ createdAt: -1 })
+          .populate('job')
+          .populate('company');
+        if (recentApp && recentApp.job) {
+          applicationDoc = recentApp;
+          jobDoc = recentApp.job;
+          companyDoc = recentApp.company;
+        }
+      }
+
+      // Ensure companyDoc is populated with name if it is an ID
+      if (companyDoc && (!companyDoc.name || typeof companyDoc === 'string')) {
+        const comp = await Company.findById(companyDoc._id || companyDoc);
+        if (comp) companyDoc = comp;
+      }
+
       const reference = `HC-MEET-${Math.floor(100000 + Math.random() * 900000)}`;
       const meetingLink = bookingData.meetingLink || `https://meet.hireconnect.io/room-${reference.toLowerCase()}`;
 

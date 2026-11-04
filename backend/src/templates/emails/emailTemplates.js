@@ -269,29 +269,171 @@ function applicationWithdrawn({ recruiterName, candidateName, jobTitle, companyN
 // ============================================================================
 // 5. INTERVIEW BOOKED (To Candidate & Recruiter)
 // ============================================================================
-function interviewBooked({ recipientName, otherParticipantName, role, meetingTitle, dateStr, timeSlotStr, timeZone, videoUrl, actionUrl }) {
-  const title = 'Interview Confirmed';
-  const preheader = `Your interview with ${otherParticipantName} is scheduled for ${dateStr}.`;
-  const contentHtml = `
-    <p>Hi ${escapeHtml(recipientName || 'there')},</p>
-    <p>Your interview has been successfully scheduled on HireConnect with <strong>${escapeHtml(otherParticipantName)}</strong>.</p>
-    <div class="card">
-      <div class="row"><span class="label">Interview</span><span class="value">${escapeHtml(meetingTitle)}</span></div>
-      <div class="row"><span class="label">Participant</span><span class="value">${escapeHtml(otherParticipantName)}</span></div>
-      <div class="row"><span class="label">Date</span><span class="value">${escapeHtml(dateStr)}</span></div>
-      <div class="row"><span class="label">Time</span><span class="value">${escapeHtml(timeSlotStr)} (${escapeHtml(timeZone)})</span></div>
+function interviewBooked({
+  recipientName,
+  otherParticipantName,
+  role = 'candidate',
+  jobTitle,
+  companyName,
+  meetingTitle,
+  meetingReference,
+  durationMinutes = 45,
+  meetingMode = 'online',
+  dateStr,
+  timeSlotStr,
+  timeZone = 'Asia/Kolkata',
+  videoUrl,
+  actionUrl
+}) {
+  const isCandidate = role === 'candidate';
+  const roleName = jobTitle || 'Technical Role';
+  const employerName = companyName || 'HireConnect Partner';
+  const roundTitle = meetingTitle || 'Technical Interview';
+  const refCode = meetingReference || 'HC-MEET-' + Math.floor(100000 + Math.random() * 900000);
+  const title = `Interview Confirmed: ${roleName}`;
+  const preheader = `Your interview with ${otherParticipantName} for ${roleName} is confirmed for ${dateStr} at ${timeSlotStr}.`;
+
+  const contentHtml = isCandidate
+    ? `
+    <p>Hi <strong>${escapeHtml(recipientName || 'there')}</strong>,</p>
+    <p>🎉 Great news! Your interview round for <strong>${escapeHtml(roleName)}</strong> with <strong>${escapeHtml(employerName)}</strong> has been successfully scheduled and confirmed on HireConnect.</p>
+
+    <!-- Interview & Job Role Details Card -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+      <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; margin-bottom: 12px;">
+        🗓️ Interview &amp; Role Specifications
+      </div>
+      <div class="row"><span class="label">Job Position</span><span class="value" style="font-weight: 600;">${escapeHtml(roleName)}</span></div>
+      <div class="row"><span class="label">Hiring Company</span><span class="value">${escapeHtml(employerName)}</span></div>
+      <div class="row"><span class="label">Interview Round</span><span class="value">${escapeHtml(roundTitle)}</span></div>
+      <div class="row"><span class="label">Interviewer / Host</span><span class="value">${escapeHtml(otherParticipantName)} (Recruiter / Hiring Team)</span></div>
+      <div class="row"><span class="label">Scheduled Date</span><span class="value" style="color: #2563eb; font-weight: 600;">${escapeHtml(dateStr)}</span></div>
+      <div class="row"><span class="label">Time &amp; Timezone</span><span class="value" style="font-weight: 600;">${escapeHtml(timeSlotStr)} (${escapeHtml(timeZone)})</span></div>
+      <div class="row"><span class="label">Duration</span><span class="value">${escapeHtml(String(durationMinutes))} Minutes</span></div>
       <div class="row"><span class="label">Format</span><span class="value">Web Conference (HD Google Meet)</span></div>
+      <div class="row"><span class="label">Meeting Reference</span><span class="value" style="font-family: monospace;">#${escapeHtml(refCode)}</span></div>
+      <div class="row"><span class="label">Status</span><span class="value" style="color: #059669; background: #ecfdf5; padding: 2px 8px; border-radius: 4px; font-size: 12px;">✓ CONFIRMED &amp; SCHEDULED</span></div>
     </div>
-    ${videoUrl ? `
-      <p style="margin-top: 16px;">
-        <strong>Video Room Link:</strong> <a href="${escapeHtml(videoUrl)}" target="_blank" style="color: #2563eb;">${escapeHtml(videoUrl)}</a>
-      </p>
-    ` : ''}
+
+    <!-- Prominent Video Link Box -->
+    ${
+      videoUrl
+        ? `
+      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; border-radius: 10px; padding: 18px 20px; margin: 20px 0; text-align: center;">
+        <div style="font-size: 13px; font-weight: 600; color: #1e40af; margin-bottom: 6px;">
+          🎥 Video Meeting Room Ready
+        </div>
+        <div style="font-size: 14px; margin-bottom: 12px;">
+          <a href="${escapeHtml(videoUrl)}" target="_blank" style="color: #2563eb; font-weight: bold; text-decoration: underline; word-break: break-all;">
+            ${escapeHtml(videoUrl)}
+          </a>
+        </div>
+        <a href="${escapeHtml(videoUrl)}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none;">
+          Join Video Room Now &rarr;
+        </a>
+      </div>
+    `
+        : ''
+    }
+
+    <!-- Interview Preparation & Processing Pipeline -->
+    <div style="margin: 28px 0; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; background-color: #ffffff;">
+      <div style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 14px;">
+        🚀 Interview &amp; Evaluation Roadmap
+      </div>
+      
+      <div style="display: flex; margin-bottom: 14px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">✓</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #0f172a;">Stage 1: Slot Selected &amp; Confirmed</div>
+          <div style="font-size: 12px; color: #64748b;">Time slot locked with the interviewer. Calendar invites dispatched.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; margin-bottom: 14px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">2</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #2563eb;">Stage 2: Technical &amp; System Check (Action Required)</div>
+          <div style="font-size: 12px; color: #64748b;">Ensure your camera, microphone, and a stable internet connection are tested.</div>
+        </div>
+      </div>
+
+      <div style="display: flex; margin-bottom: 14px;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">3</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #64748b;">Stage 3: Live Technical Assessment &amp; Discussion</div>
+          <div style="font-size: 12px; color: #64748b;">Interactive session covering domain problems, past architecture, and role alignment.</div>
+        </div>
+      </div>
+
+      <div style="display: flex;">
+        <div style="min-width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; text-align: center; line-height: 28px;">4</div>
+        <div>
+          <div style="font-weight: 600; font-size: 14px; color: #64748b;">Stage 4: Post-Interview Feedback &amp; Decision</div>
+          <div style="font-size: 12px; color: #64748b;">Comprehensive debrief and next steps shared within 48 to 72 hours.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Candidate Preparation Tips -->
+    <div style="background-color: #f1f5f9; border-left: 4px solid #2563eb; padding: 14px 16px; border-radius: 4px; font-size: 13px; color: #475569; margin: 20px 0;">
+      <strong>💡 Tips for a successful interview:</strong>
+      <ul style="margin: 8px 0 0 18px; padding: 0;">
+        <li>Join the video room <strong>5 minutes early</strong> to verify video and audio quality.</li>
+        <li>Have your resume, past projects, and code repositories ready to share if requested.</li>
+        <li>Prepare 2–3 questions about the team, tech stack, and company culture.</li>
+      </ul>
+    </div>
+  `
+    : `
+    <p>Hi <strong>${escapeHtml(recipientName || 'there')}</strong>,</p>
+    <p>A new interview has been confirmed on your schedule with candidate <strong>${escapeHtml(otherParticipantName)}</strong> for <strong>${escapeHtml(roleName)}</strong>.</p>
+
+    <!-- Recruiter Details Card -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+      <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2563eb; margin-bottom: 12px;">
+        🗓️ Candidate Interview Schedule
+      </div>
+      <div class="row"><span class="label">Candidate</span><span class="value" style="font-weight: 600;">${escapeHtml(otherParticipantName)}</span></div>
+      <div class="row"><span class="label">Position</span><span class="value">${escapeHtml(roleName)}</span></div>
+      <div class="row"><span class="label">Company</span><span class="value">${escapeHtml(employerName)}</span></div>
+      <div class="row"><span class="label">Round</span><span class="value">${escapeHtml(roundTitle)}</span></div>
+      <div class="row"><span class="label">Date</span><span class="value" style="color: #2563eb; font-weight: 600;">${escapeHtml(dateStr)}</span></div>
+      <div class="row"><span class="label">Time</span><span class="value" style="font-weight: 600;">${escapeHtml(timeSlotStr)} (${escapeHtml(timeZone)})</span></div>
+      <div class="row"><span class="label">Duration</span><span class="value">${escapeHtml(String(durationMinutes))} Minutes</span></div>
+      <div class="row"><span class="label">Reference</span><span class="value" style="font-family: monospace;">#${escapeHtml(refCode)}</span></div>
+    </div>
+
+    ${
+      videoUrl
+        ? `
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 18px 0; text-align: center;">
+        <a href="${escapeHtml(videoUrl)}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none;">
+          Open Interview Meeting Room &rarr;
+        </a>
+      </div>
+    `
+        : ''
+    }
+
+    <p style="font-size: 13px; color: #64748b; margin-top: 16px;">
+      You can review candidate qualifications, resume snapshots, and past screening answers in your recruiter dashboard.
+    </p>
   `;
-  const text = `Hi ${recipientName || 'there'},\n\nYour interview with ${otherParticipantName} (${meetingTitle}) is confirmed for ${dateStr} at ${timeSlotStr} (${timeZone}).\n\nVideo link: ${videoUrl || 'Provided on platform'}\nManage meeting: ${actionUrl}\n\nBest regards,\nThe HireConnect Team`;
+
+  const text = isCandidate
+    ? `Hi ${recipientName || 'there'},\n\nYour interview for ${roleName} (${roundTitle}) with ${otherParticipantName} at ${employerName} is confirmed!\n\nDETAILS:\n- Job: ${roleName}\n- Company: ${employerName}\n- Interviewer: ${otherParticipantName}\n- Date: ${dateStr}\n- Time: ${timeSlotStr} (${timeZone})\n- Duration: ${durationMinutes} Mins\n- Reference: #${refCode}\n- Video Link: ${videoUrl || 'Available on platform'}\n\nROADMAP:\n1. Slot Confirmed (Done)\n2. Technical & System Check\n3. Live Assessment\n4. Final Decision\n\nManage meeting: ${actionUrl}\n\nBest regards,\nThe HireConnect Team`
+    : `Hi ${recipientName || 'there'},\n\nNew interview scheduled with candidate ${otherParticipantName} for ${roleName} at ${employerName}.\nDate: ${dateStr} at ${timeSlotStr} (${timeZone})\nVideo link: ${videoUrl}\nManage: ${actionUrl}\n\nBest regards,\nThe HireConnect Team`;
+
   return {
-    subject: `Interview Confirmed: ${meetingTitle} on ${dateStr}`,
-    html: wrapTemplate({ title, preheader, contentHtml, actionUrl, actionText: 'View Meeting Details' }),
+    subject: `Interview Confirmed: ${roundTitle} on ${dateStr}`,
+    html: wrapTemplate({
+      title,
+      preheader,
+      contentHtml,
+      actionUrl: videoUrl || actionUrl,
+      actionText: 'Join Video Interview Room'
+    }),
     text
   };
 }
