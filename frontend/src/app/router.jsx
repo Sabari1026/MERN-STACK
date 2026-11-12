@@ -73,6 +73,7 @@ export function AppRouter() {
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/terms-of-service" element={<TermsPage />} />
 
         {/* Authentication Pages */}
         <Route path="/signin" element={<SignInPage />} />

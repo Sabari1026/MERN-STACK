@@ -156,7 +156,7 @@ export function Footer() {
           <div>HireConnect © 2026. All rights reserved.</div>
           <div style={{ display: 'flex', gap: '24rem' }}>
             <Link to="/terms" style={{ color: 'var(--text-muted)' }}>
-              Terms & Conditions
+              Terms of Service
             </Link>
             <Link to="/privacy-policy" style={{ color: 'var(--text-muted)' }}>
               Privacy Policy

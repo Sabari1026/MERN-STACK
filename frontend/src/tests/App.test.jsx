@@ -29,6 +29,7 @@ describe('HireConnect React Application Startup & Route Rendering', () => {
 
     // Footer copyright check
     expect(screen.getByText(/HireConnect © 2026/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Terms of Service/i })).toHaveAttribute('href', '/terms');
     expect(screen.getByRole('link', { name: /Privacy Policy/i })).toHaveAttribute('href', '/privacy-policy');
   });
 
@@ -51,5 +52,27 @@ describe('HireConnect React Application Startup & Route Rendering', () => {
     expect(screen.getAllByText(/12\. Contact Information/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Zero Data Selling/i)).toBeInTheDocument();
     expect(screen.getAllByText(/https:\/\/www\.googleapis\.com\/auth\/gmail\.send/i).length).toBeGreaterThan(0);
+  });
+
+  it('renders publicly accessible Terms of Service page with all required sections without authentication', () => {
+    window.history.pushState({}, 'Terms of Service', '/terms');
+    render(<App />);
+
+    expect(screen.getByRole('heading', { level: 1, name: /Terms of Service/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/1\. Introduction & Acceptance of Terms/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2\. Eligibility/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/3\. User Accounts & Responsibilities/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/4\. Candidate Responsibilities/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/5\. Recruiter & Employer Responsibilities/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/6\. Job Listings & Applications/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/7\. Prohibited Activities/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/8\. Platform Availability/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/9\. Email Notifications/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/10\. Intellectual Property/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/11\. Account Suspension & Termination/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/12\. Limitation of Liability/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/13\. Changes to Terms/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/14\. Contact Information/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Zero Candidate Placement Fees/i)).toBeInTheDocument();
   });
 });
