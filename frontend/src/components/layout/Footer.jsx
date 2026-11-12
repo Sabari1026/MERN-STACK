@@ -132,7 +132,7 @@ export function Footer() {
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12rem', fontSize: '14rem', color: 'var(--text-muted)' }}>
               <span>✓ MongoDB Atlas Verified</span>
-              <span>✓ Resend Encrypted SMTP</span>
+              <span>✓ Gmail API OAuth 2.0 (HTTPS)</span>
               <span>✓ Private Resumes Isolation</span>
               <span>✓ Zero Tailwind / Pure MERN</span>
             </div>
@@ -158,7 +158,7 @@ export function Footer() {
             <Link to="/terms" style={{ color: 'var(--text-muted)' }}>
               Terms & Conditions
             </Link>
-            <Link to="/privacy" style={{ color: 'var(--text-muted)' }}>
+            <Link to="/privacy-policy" style={{ color: 'var(--text-muted)' }}>
               Privacy Policy
             </Link>
           </div>

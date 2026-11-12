@@ -23,6 +23,7 @@ import { ApproachPage } from '../pages/ApproachPage';
 import { CasesPage } from '../pages/CasesPage';
 import { ContactPage } from '../pages/ContactPage';
 import { PrivacyPage } from '../pages/PrivacyPage';
+import { PrivacyPolicyPage } from '../pages/PrivacyPolicyPage';
 import { TermsPage } from '../pages/TermsPage';
 
 /**
@@ -69,7 +70,8 @@ export function AppRouter() {
         <Route path="/approach" element={<ApproachPage />} />
         <Route path="/cases" element={<CasesPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
 
         {/* Authentication Pages */}

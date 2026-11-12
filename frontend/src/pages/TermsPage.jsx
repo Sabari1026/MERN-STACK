@@ -51,7 +51,7 @@ export function TermsPage() {
                 contact@hireconnect.io
               </a>
               . For privacy inquiries, view our{' '}
-              <Link to="/privacy" style={{ color: 'var(--color-accent-purple-light)', textDecoration: 'underline' }}>
+              <Link to="/privacy-policy" style={{ color: 'var(--color-accent-purple-light)', textDecoration: 'underline' }}>
                 Privacy Policy
               </Link>.
             </p>
