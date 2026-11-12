@@ -60,7 +60,7 @@ const createJobSchema = z
     title: z
       .string({ required_error: 'Job title is required' })
       .trim()
-      .min(3, 'Job title must be at least 3 characters')
+      .min(2, 'Job title must be at least 2 characters')
       .max(150, 'Job title cannot exceed 150 characters'),
     company: z.string().trim().optional(),
     companyId: z.string().trim().optional(),
@@ -69,7 +69,12 @@ const createJobSchema = z
       .trim()
       .optional()
       .default('Join our high-impact engineering team to build scalable, mission-critical products.')
-      .refine((val) => !val || val.length >= 10, { message: 'Job description must be at least 10 characters' }),
+      .transform((val) => {
+        if (!val || val.trim().length === 0) {
+          return 'Join our high-impact engineering team to build scalable, mission-critical products.';
+        }
+        return val.trim();
+      }),
     shortDescription: z.string().trim().max(300).optional().default(''),
     department: z.string().trim().max(100).optional().default('Engineering'),
     category: z.string().trim().max(50).optional().default('fullstack'),
@@ -78,7 +83,19 @@ const createJobSchema = z
       .trim()
       .optional()
       .default('full-time')
-      .transform((val) => (val || 'full-time').toLowerCase()),
+      .transform((val) => {
+        if (!val) return 'full-time';
+        const lower = val.toLowerCase().replace(/[\s_]+/g, '-');
+        if (lower.includes('full')) return 'full-time';
+        if (lower.includes('part')) return 'part-time';
+        if (lower.includes('contract')) return 'contract';
+        if (lower.includes('intern')) return 'internship';
+        return lower;
+      }),
+    jobType: z
+      .string()
+      .trim()
+      .optional(),
     workMode: z
       .string()
       .trim()
@@ -86,7 +103,7 @@ const createJobSchema = z
       .default('hybrid')
       .transform((val) => {
         const lower = (val || 'hybrid').toLowerCase();
-        if (lower === 'on-site') return 'onsite';
+        if (lower === 'on-site' || lower === 'in-person' || lower === 'office') return 'onsite';
         return lower;
       }),
     location: z.string().trim().max(150).optional().default('Bengaluru, Karnataka'),
@@ -100,8 +117,24 @@ const createJobSchema = z
       .optional()
       .default('mid'),
     experience: z.string().trim().max(50).optional(),
-    salaryMin: z.coerce.number().min(0, 'Minimum salary cannot be negative').optional().nullable(),
-    salaryMax: z.coerce.number().min(0, 'Maximum salary cannot be negative').optional().nullable(),
+    salaryMin: z
+      .any()
+      .optional()
+      .nullable()
+      .transform((val) => {
+        if (val === undefined || val === null || val === '') return null;
+        const num = Number(String(val).replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? null : num;
+      }),
+    salaryMax: z
+      .any()
+      .optional()
+      .nullable()
+      .transform((val) => {
+        if (val === undefined || val === null || val === '') return null;
+        const num = Number(String(val).replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? null : num;
+      }),
     salaryCurrency: z.string().trim().max(10).optional().default('INR'),
     salaryPeriod: z.enum(['annual', 'monthly', 'hourly']).optional().default('annual'),
     salaryDisclosure: z.enum(['disclosed', 'undisclosed']).optional().default('disclosed'),
@@ -123,6 +156,21 @@ const createJobSchema = z
     deadline: z.string().trim().optional().nullable(),
     openingsCount: z.coerce.number().int().min(1).optional().default(1),
     status: z.enum(['draft', 'published', 'closed', 'paused']).optional().default('draft')
+  })
+  .transform((data) => {
+    if (data.jobType && (!data.employmentType || data.employmentType === 'full-time')) {
+      const lower = data.jobType.toLowerCase().replace(/[\s_]+/g, '-');
+      data.employmentType = lower.includes('part') ? 'part-time' : lower.includes('contract') ? 'contract' : lower.includes('intern') ? 'internship' : 'full-time';
+    }
+    if (!data.employmentType) {
+      data.employmentType = 'full-time';
+    }
+    if (data.skills?.length && !data.requiredSkills?.length) {
+      data.requiredSkills = [...data.skills];
+    } else if (data.requiredSkills?.length && !data.skills?.length) {
+      data.skills = [...data.requiredSkills];
+    }
+    return data;
   })
   .refine(
     (data) => {
@@ -165,8 +213,8 @@ const createJobSchema = z
 // Update Job: Strict allowlist. Cannot overwrite company or createdBy.
 const updateJobSchema = z
   .object({
-    title: z.string().trim().min(3).max(150).optional(),
-    description: z.string().trim().min(20).max(20000).optional(),
+    title: z.string().trim().min(2).max(150).optional(),
+    description: z.string().trim().min(3).max(20000).optional(),
     shortDescription: z.string().trim().max(300).optional(),
     department: z.string().trim().max(100).optional(),
     category: z.string().trim().max(50).optional(),
@@ -174,7 +222,16 @@ const updateJobSchema = z
       .string()
       .trim()
       .optional()
-      .transform((val) => (val ? val.toLowerCase() : undefined)),
+      .transform((val) => {
+        if (!val) return undefined;
+        const lower = val.toLowerCase().replace(/[\s_]+/g, '-');
+        if (lower.includes('full')) return 'full-time';
+        if (lower.includes('part')) return 'part-time';
+        if (lower.includes('contract')) return 'contract';
+        if (lower.includes('intern')) return 'internship';
+        return lower;
+      }),
+    jobType: z.string().trim().optional(),
     workMode: z
       .string()
       .trim()
@@ -182,7 +239,7 @@ const updateJobSchema = z
       .transform((val) => {
         if (!val) return undefined;
         const lower = val.toLowerCase();
-        if (lower === 'on-site') return 'onsite';
+        if (lower === 'on-site' || lower === 'in-person' || lower === 'office') return 'onsite';
         return lower;
       }),
     location: z.string().trim().max(150).optional(),
@@ -193,8 +250,24 @@ const updateJobSchema = z
     experienceMax: z.coerce.number().min(0).optional().nullable(),
     experienceLevel: z.enum(['entry', 'junior', 'mid', 'senior', 'lead', 'executive']).optional(),
     experience: z.string().trim().max(50).optional(),
-    salaryMin: z.coerce.number().min(0).optional().nullable(),
-    salaryMax: z.coerce.number().min(0).optional().nullable(),
+    salaryMin: z
+      .any()
+      .optional()
+      .nullable()
+      .transform((val) => {
+        if (val === undefined || val === null || val === '') return undefined;
+        const num = Number(String(val).replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? undefined : num;
+      }),
+    salaryMax: z
+      .any()
+      .optional()
+      .nullable()
+      .transform((val) => {
+        if (val === undefined || val === null || val === '') return undefined;
+        const num = Number(String(val).replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? undefined : num;
+      }),
     salaryCurrency: z.string().trim().max(10).optional(),
     salaryPeriod: z.enum(['annual', 'monthly', 'hourly']).optional(),
     salaryDisclosure: z.enum(['disclosed', 'undisclosed']).optional(),
@@ -215,6 +288,13 @@ const updateJobSchema = z
     deadline: z.string().trim().optional().nullable(),
     openingsCount: z.coerce.number().int().min(1).optional(),
     status: z.enum(['draft', 'published', 'closed', 'paused']).optional()
+  })
+  .transform((data) => {
+    if (data.jobType && !data.employmentType) {
+      const lower = data.jobType.toLowerCase().replace(/[\s_]+/g, '-');
+      data.employmentType = lower.includes('part') ? 'part-time' : lower.includes('contract') ? 'contract' : lower.includes('intern') ? 'internship' : 'full-time';
+    }
+    return data;
   })
   .refine(
     (data) => {
@@ -248,6 +328,7 @@ const searchJobsSchema = z.object({
   location: z.string().trim().max(100).optional().default(''),
   workMode: z.string().trim().max(30).optional().default('all'),
   employmentType: z.string().trim().max(30).optional().default('all'),
+  jobType: z.string().trim().max(30).optional(),
   category: z.string().trim().max(50).optional().default('all'),
   experience: z.string().trim().max(50).optional().default('all'),
   experienceMin: z.coerce.number().min(0).optional(),

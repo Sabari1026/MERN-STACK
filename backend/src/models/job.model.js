@@ -74,14 +74,29 @@ const jobSchema = new mongoose.Schema(
     },
     employmentType: {
       type: String,
-      enum: ['full-time', 'part-time', 'contract', 'internship'],
+      set: (val) => {
+        if (!val) return 'full-time';
+        const s = String(val).toLowerCase().trim().replace(/[\s_]+/g, '-');
+        if (s.includes('full')) return 'full-time';
+        if (s.includes('part')) return 'part-time';
+        if (s.includes('contract')) return 'contract';
+        if (s.includes('intern')) return 'internship';
+        return s;
+      },
+      enum: ['full-time', 'part-time', 'contract', 'internship', 'full_time', 'part_time'],
       default: 'full-time',
       lowercase: true,
       index: true
     },
     workMode: {
       type: String,
-      enum: ['remote', 'hybrid', 'onsite'],
+      set: (val) => {
+        if (!val) return 'hybrid';
+        const s = String(val).toLowerCase().trim();
+        if (s === 'on-site' || s === 'in-person' || s === 'office') return 'onsite';
+        return s;
+      },
+      enum: ['remote', 'hybrid', 'onsite', 'on-site'],
       default: 'hybrid',
       lowercase: true,
       index: true
@@ -162,7 +177,8 @@ const jobSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Job description is required'],
       trim: true,
-      minlength: [20, 'Job description must be at least 20 characters']
+      default: 'Join our high-impact engineering team to build scalable, mission-critical products.',
+      minlength: [3, 'Job description must be at least 3 characters']
     },
     shortDescription: {
       type: String,
@@ -310,23 +326,52 @@ const jobSchema = new mongoose.Schema(
 );
 
 jobSchema.pre('validate', async function (next) {
-  if (!this.slug && this.title) {
-    const base = slugify(this.title) || 'job';
-    let candidate = base;
-    let counter = 1;
-    const JobModel = this.constructor;
-    while (true) {
-      const query = { slug: candidate };
-      if (this._id) query._id = { $ne: this._id };
-      const existing = await JobModel.findOne(query);
-      if (!existing) {
-        this.slug = candidate;
-        break;
+  try {
+    if (!this.slug && this.title) {
+      const base = slugify(this.title) || 'job';
+      let candidate = base;
+      let counter = 1;
+      const JobModel = this.constructor;
+      while (true) {
+        const query = { slug: candidate };
+        if (this._id) query._id = { $ne: this._id };
+        const existing = await JobModel.findOne(query);
+        if (!existing) {
+          this.slug = candidate;
+          break;
+        }
+        candidate = `${base}-${counter++}`;
+        if (counter > 100) {
+          candidate = `${base}-${Date.now()}`;
+          this.slug = candidate;
+          break;
+        }
       }
-      candidate = `${base}-${counter++}`;
     }
+    if (!this.description || !this.description.trim()) {
+      this.description = 'Join our high-impact engineering team to build scalable, mission-critical products.';
+    }
+    if (this.employmentType) {
+      const et = String(this.employmentType).toLowerCase().replace(/[\s_]+/g, '-');
+      this.employmentType = et.includes('full') ? 'full-time' : et.includes('part') ? 'part-time' : et;
+    }
+    if (this.workMode) {
+      const wm = String(this.workMode).toLowerCase();
+      this.workMode = wm === 'on-site' ? 'onsite' : wm;
+    }
+    if (this.skills && this.skills.length > 0 && (!this.requiredSkills || this.requiredSkills.length === 0)) {
+      this.requiredSkills = [...this.skills];
+    }
+    if (this.requiredSkills && this.requiredSkills.length > 0 && (!this.skills || this.skills.length === 0)) {
+      this.skills = [...this.requiredSkills];
+    }
+    if (typeof next === 'function') next();
+  } catch (err) {
+    if (!this.slug) {
+      this.slug = `${slugify(this.title) || 'job'}-${Date.now()}`;
+    }
+    if (typeof next === 'function') next(err);
   }
-  if (typeof next === 'function') next();
 });
 
 // Compound text search index for fast keyword lookup

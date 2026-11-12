@@ -196,7 +196,7 @@ class JobService {
       if (!company) {
         company = await Company.findOne({ slug: requestedCompanyId });
       }
-      if (!company && requestedCompanyId.startsWith('comp-')) {
+      if (!company && typeof requestedCompanyId === 'string' && requestedCompanyId.startsWith('comp-')) {
         const cleanSlug = requestedCompanyId.replace(/^comp-/, '');
         company = await Company.findOne({ slug: cleanSlug });
       }
@@ -222,7 +222,39 @@ class JobService {
     }
 
     if (!company) {
-      throw ApiError.badRequest('No associated company found. Please select or join an organization first.');
+      // Check if user created any company
+      company = await Company.findOne({ createdBy: user._id || user.id });
+    }
+
+    // If still no company exists for this recruiter, automatically create and link a default verified company
+    if (!company) {
+      const compName = user.companyName || (user.name ? `${user.name} Tech` : 'HireConnect Partner');
+      const slug = await Company.generateUniqueSlug(compName);
+      company = await Company.create({
+        name: compName,
+        slug,
+        industry: 'Technology',
+        description: `${compName} is a verified tech employer on HireConnect.`,
+        verificationStatus: 'verified',
+        verified: true,
+        verifiedAt: new Date(),
+        createdBy: user._id || user.id
+      });
+
+      await CompanyMembership.create({
+        company: company._id || company.id,
+        user: user._id || user.id,
+        membershipRole: 'owner',
+        status: 'active'
+      });
+
+      const recProfile = await RecruiterProfile.findOne({ user: user._id || user.id });
+      if (recProfile) {
+        recProfile.company = company._id || company.id;
+        recProfile.companyName = company.name;
+        await recProfile.save();
+      }
+      logger.info(`[JobService] Auto-created verified company "${compName}" for recruiter ${user.email}`);
     }
 
     // Auto-create membership for seed recruiter if missing
@@ -273,6 +305,31 @@ class JobService {
       status: isPublishedRequested ? 'published' : (data.status || 'draft'),
       publishedAt: isPublishedRequested ? new Date() : null
     };
+
+    // Normalize employmentType and workMode
+    if (jobData.jobType && !jobData.employmentType) {
+      jobData.employmentType = jobData.jobType;
+    }
+    if (jobData.employmentType) {
+      const et = String(jobData.employmentType).toLowerCase().replace(/[\s_]+/g, '-');
+      jobData.employmentType = et.includes('full') ? 'full-time' : et.includes('part') ? 'part-time' : et.includes('contract') ? 'contract' : et.includes('intern') ? 'internship' : et;
+    }
+    if (jobData.workMode) {
+      const wm = String(jobData.workMode).toLowerCase();
+      jobData.workMode = wm === 'on-site' || wm === 'in-person' || wm === 'office' ? 'onsite' : wm;
+    }
+
+    // Fallback description if empty
+    if (!jobData.description || !jobData.description.trim()) {
+      jobData.description = 'Join our high-impact engineering team to build scalable, mission-critical products.';
+    }
+
+    // Sync skills and requiredSkills
+    if (jobData.skills?.length && !jobData.requiredSkills?.length) {
+      jobData.requiredSkills = [...jobData.skills];
+    } else if (jobData.requiredSkills?.length && !jobData.skills?.length) {
+      jobData.skills = [...jobData.requiredSkills];
+    }
 
     // Format experience string if not explicitly given
     if (!jobData.experience) {
@@ -367,10 +424,12 @@ class JobService {
       query.workMode = normalizedMode;
     }
 
-    // Employment Type filter
-    const empType = (filters.employmentType || '').toLowerCase().trim();
-    if (empType && empType !== 'all') {
-      query.employmentType = empType;
+    // Employment Type filter (supports both employmentType and jobType)
+    const rawEmpType = (filters.employmentType || filters.jobType || '').toLowerCase().trim();
+    if (rawEmpType && rawEmpType !== 'all') {
+      const cleanEmpType = rawEmpType.replace(/[\s_]+/g, '-');
+      const normalizedEmp = cleanEmpType.includes('full') ? 'full-time' : cleanEmpType.includes('part') ? 'part-time' : cleanEmpType;
+      query.employmentType = { $in: [normalizedEmp, normalizedEmp.replace('-', '_'), rawEmpType] };
     }
 
     // Category / Role filter
@@ -644,14 +703,14 @@ class JobService {
       }
     }
 
+    const userUid = user._id || user.id;
     const query = {};
     if (companyIds.length === 1) {
-      query.company = companyIds[0];
+      query.$or = [{ company: companyIds[0] }, { createdBy: userUid }];
     } else if (companyIds.length > 1) {
-      query.company = { $in: companyIds };
+      query.$or = [{ company: { $in: companyIds } }, { createdBy: userUid }];
     } else if (user.role !== 'admin') {
-      // User has no company memberships
-      return { jobs: [], total: 0, page, limit, totalPages: 0 };
+      query.createdBy = userUid;
     }
 
     if (filters.status && filters.status !== 'all') {

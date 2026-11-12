@@ -126,22 +126,32 @@ export function RecruiterDashboardPage() {
     e.preventDefault();
     setSavingJob(true);
     try {
-      const skillsArray = jobForm.skills
+      const skillsArray = (jobForm.skills || '')
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const rawType = (jobForm.jobType || 'full-time').toLowerCase().replace(/[\s_]+/g, '-');
+      const normalizedEmploymentType =
+        rawType.includes('part') ? 'part-time' :
+        rawType.includes('contract') ? 'contract' :
+        rawType.includes('intern') ? 'internship' : 'full-time';
+
+      const sMin = jobForm.salaryMin !== '' && !isNaN(Number(jobForm.salaryMin)) ? Number(jobForm.salaryMin) : undefined;
+      const sMax = jobForm.salaryMax !== '' && !isNaN(Number(jobForm.salaryMax)) ? Number(jobForm.salaryMax) : undefined;
+
       await jobService.createJob({
         title: jobForm.title.trim(),
-        department: jobForm.department,
-        workMode: jobForm.workMode,
-        jobType: jobForm.jobType,
+        department: jobForm.department || 'Engineering',
+        workMode: jobForm.workMode || 'remote',
+        jobType: normalizedEmploymentType,
+        employmentType: normalizedEmploymentType,
         location: jobForm.location.trim() || 'Remote',
-        description: jobForm.description.trim(),
+        description: jobForm.description.trim() || 'Join our high-impact engineering team to build scalable, mission-critical products.',
         skills: skillsArray,
-        salaryMin: jobForm.salaryMin ? Number(jobForm.salaryMin) : undefined,
-        salaryMax: jobForm.salaryMax ? Number(jobForm.salaryMax) : undefined,
-        salaryCurrency: jobForm.salaryCurrency,
+        salaryMin: sMin,
+        salaryMax: sMax,
+        salaryCurrency: jobForm.salaryCurrency || 'INR',
         status: 'published'
       });
 
@@ -157,11 +167,14 @@ export function RecruiterDashboardPage() {
         skills: '',
         salaryMin: '',
         salaryMax: '',
-        salaryCurrency: 'USD'
+        salaryCurrency: 'INR'
       });
       loadJobs();
     } catch (err) {
-      toast.error(err.message || 'Failed to create job opening.');
+      const detailedMsg = err.errors && Array.isArray(err.errors)
+        ? err.errors.map(e => e.message || e.field).join(', ')
+        : null;
+      toast.error(detailedMsg ? `${err.message}: ${detailedMsg}` : (err.message || 'Failed to create job opening.'));
     } finally {
       setSavingJob(false);
     }
@@ -682,6 +695,31 @@ export function RecruiterDashboardPage() {
                   />
                 </div>
 
+                <div className="grid-12">
+                  <div className="col-6 form-group">
+                    <label className="form-label">Min Salary (LPA / Annual)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="e.g. 12"
+                      value={jobForm.salaryMin}
+                      onChange={(e) => setJobForm({ ...jobForm, salaryMin: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-6 form-group">
+                    <label className="form-label">Max Salary (LPA / Annual)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="e.g. 24"
+                      value={jobForm.salaryMax}
+                      onChange={(e) => setJobForm({ ...jobForm, salaryMax: e.target.value })}
+                    />
+                  </div>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">Job Description & Responsibilities</label>
                   <textarea
@@ -689,7 +727,6 @@ export function RecruiterDashboardPage() {
                     placeholder="Detail the technical responsibilities, stack, expectations, and culture..."
                     value={jobForm.description}
                     onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
-                    required
                   />
                 </div>
               </div>
