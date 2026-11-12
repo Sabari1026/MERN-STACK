@@ -73,4 +73,64 @@ describe('Health and Monitoring Probes', () => {
       expect(res.body.data.database.readyState).toBe(1);
     });
   });
+
+  describe('GET /api/health/email', () => {
+    it('should return email health status and provider configuration safely', async () => {
+      const res = await request(app).get('/api/health/email');
+
+      expect([200, 503]).toContain(res.status);
+      expect(res.headers['content-type']).toMatch(/json/);
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('provider', 'gmail-api');
+      expect(res.body.data).toHaveProperty('sender');
+      expect(res.body.data).toHaveProperty('adminRecipient');
+      expect(res.body.data).toHaveProperty('verificationResult');
+    });
+  });
+
+  describe('POST /api/health/email/test', () => {
+    it('should deliver a controlled test email without throwing unhandled exceptions', async () => {
+      const res = await request(app)
+        .post('/api/health/email/test')
+        .send({ to: 'sabari1082005@gmail.com' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body.message).toContain('delivered successfully');
+      expect(res.body.data).toHaveProperty('messageId');
+    });
+
+    it('should support default recipient when none is provided in body', async () => {
+      const res = await request(app)
+        .post('/api/health/email/test')
+        .send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+  });
+
+  describe('POST /api/health/email/outbox/process', () => {
+    it('should trigger outbox queue processing cleanly', async () => {
+      const res = await request(app)
+        .post('/api/health/email/outbox/process?batch=10');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body.data).toHaveProperty('processed');
+    });
+  });
+
+  describe('emailService backward-compatibility alias', () => {
+    it('should provide sendMail as an alias to sendEmail', async () => {
+      const emailService = require('../src/services/email.service');
+      expect(typeof emailService.sendMail).toBe('function');
+      const result = await emailService.sendMail({
+        to: 'test@hireconnect.io',
+        subject: 'Alias Test',
+        text: 'Testing sendMail alias'
+      });
+      expect(result.success).toBe(true);
+    });
+  });
 });

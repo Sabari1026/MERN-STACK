@@ -724,6 +724,13 @@ class NotificationService {
   async notifyJobStatusChanged({ job, recruiter, company, status }) {
     if (!recruiter) return;
     const recId = recruiter._id || recruiter.id;
+    let recruiterUser = recruiter;
+    if (!recruiterUser.email && recId) {
+      try {
+        const found = await User.findById(recId);
+        if (found) recruiterUser = found;
+      } catch (_) {}
+    }
     const jobId = job._id || job.id;
     const jobTitle = job.title;
     const companyName = company?.name || job.companyName || 'HireConnect Partner';
@@ -733,7 +740,7 @@ class NotificationService {
     let emailOptions = null;
     if (status === 'published') {
       emailOptions = emailTemplates.jobPublished({
-        recruiterName: recruiter.name || 'Recruiter',
+        recruiterName: recruiterUser.name || 'Recruiter',
         jobTitle,
         companyName,
         department: job.department || 'Engineering',
@@ -761,8 +768,8 @@ class NotificationService {
       try {
         const adminRecipient = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
         const adminEmail = emailTemplates.adminJobPublished({
-          recruiterName: recruiter.name || 'Recruiter',
-          recruiterEmail: recruiter.email || '',
+          recruiterName: recruiterUser.name || 'Recruiter',
+          recruiterEmail: recruiterUser.email || '',
           jobTitle,
           companyName,
           department: job.department || 'Engineering',

@@ -80,22 +80,34 @@ const getReadiness = (req, res) => {
  * GET /api/health/email
  */
 const getEmailHealth = async (req, res) => {
-  const emailService = require('../services/email.service');
-  const safeStatus = emailService.getStatus();
-  const verification = await emailService.verifyConnection();
+  try {
+    const emailService = require('../services/email.service');
+    const safeStatus = emailService.getStatus();
+    const verification = await emailService.verifyConnection();
 
-  return ApiResponse.success(res, {
-    statusCode: verification.success ? 200 : 503,
-    message: verification.message,
-    data: {
-      status: verification.success ? 'connected' : 'disconnected',
-      provider: safeStatus.provider,
-      sender: safeStatus.sender,
-      adminRecipient: safeStatus.adminRecipient,
-      providerDetails: safeStatus,
-      verificationResult: verification
-    }
-  });
+    return ApiResponse.success(res, {
+      statusCode: verification.success ? 200 : 503,
+      message: verification.message,
+      data: {
+        status: verification.success ? 'connected' : 'disconnected',
+        provider: safeStatus.provider,
+        sender: safeStatus.sender,
+        adminRecipient: safeStatus.adminRecipient,
+        providerDetails: safeStatus,
+        verificationResult: verification
+      }
+    });
+  } catch (err) {
+    return res.status(503).json({
+      success: false,
+      message: err.message || 'Email health verification failed',
+      code: 'EMAIL_HEALTH_CHECK_FAILED',
+      data: {
+        status: 'disconnected',
+        error: err.message
+      }
+    });
+  }
 };
 
 /**
@@ -103,17 +115,49 @@ const getEmailHealth = async (req, res) => {
  * POST /api/health/email/test
  */
 const sendTestEmail = async (req, res) => {
-  const emailService = require('../services/email.service');
-  const recipient = req.body?.to || process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+  try {
+    const emailService = require('../services/email.service');
+    const recipient = req.body?.to || process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'sabari1082005@gmail.com';
 
-  const result = await emailService.sendTestEmail(recipient);
-  return res.status(result.success ? 200 : 500).json({
-    success: result.success,
-    message: result.success
-      ? `Test email delivered successfully to ${recipient}`
-      : `Failed to deliver test email: ${result.error}`,
-    data: result
-  });
+    const result = await emailService.sendTestEmail(recipient);
+    return res.status(result.success ? 200 : 500).json({
+      success: result.success,
+      message: result.success
+        ? `Test email delivered successfully to ${recipient}`
+        : `Failed to deliver test email: ${result.error}`,
+      data: result
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: `Failed to deliver test email: ${err.message}`,
+      error: err.message
+    });
+  }
+};
+
+/**
+ * Trigger processing of pending outbox notifications
+ * POST /api/health/email/outbox/process
+ */
+const flushEmailOutbox = async (req, res) => {
+  try {
+    const emailService = require('../services/email.service');
+    const batchSize = Math.min(100, Math.max(1, parseInt(req.query?.batch || '20', 10)));
+    const result = await emailService.processPendingOutbox(batchSize);
+
+    return res.status(200).json({
+      success: true,
+      message: `Processed ${result.processed} outbox items (${result.sent} sent, ${result.failed} failed).`,
+      data: result
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: `Outbox processing failed: ${err.message}`,
+      error: err.message
+    });
+  }
 };
 
 module.exports = {
@@ -121,5 +165,6 @@ module.exports = {
   getLiveness,
   getReadiness,
   getEmailHealth,
-  sendTestEmail
+  sendTestEmail,
+  flushEmailOutbox
 };

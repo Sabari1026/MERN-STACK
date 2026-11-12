@@ -18,6 +18,17 @@ const NotificationOutbox = require('../models/notificationOutbox.model');
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 /**
+ * Strips accidental whitespace, surrounding double/single quotes, and carriage returns from env vars
+ */
+function cleanEnvVar(val) {
+  if (!val) return '';
+  return String(val)
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .trim();
+}
+
+/**
  * Encodes an RFC 2822 email into a base64url string for Gmail API messages.send
  */
 function buildRawMimeMessage({ from, to, subject, html, text }) {
@@ -75,10 +86,10 @@ class EmailService {
       return;
     }
 
-    const clientId = process.env.GMAIL_CLIENT_ID;
-    const clientSecret = process.env.GMAIL_CLIENT_SECRET;
-    const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
-    const redirectUri = process.env.GMAIL_REDIRECT_URI || 'https://developers.google.com/oauthplayground';
+    const clientId = cleanEnvVar(process.env.GMAIL_CLIENT_ID);
+    const clientSecret = cleanEnvVar(process.env.GMAIL_CLIENT_SECRET);
+    const refreshToken = cleanEnvVar(process.env.GMAIL_REFRESH_TOKEN);
+    const redirectUri = cleanEnvVar(process.env.GMAIL_REDIRECT_URI) || 'https://developers.google.com/oauthplayground';
 
     if (clientId && clientSecret && refreshToken) {
       try {
@@ -91,7 +102,7 @@ class EmailService {
         });
 
         this.isConfigured = true;
-        const sender = process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+        const sender = cleanEnvVar(process.env.GMAIL_USER) || 'sabari1082005@gmail.com';
         logger.info(`[EmailService:GmailAPI] Initialized Gmail API v1 over HTTPS (port 443) for sender: ${sender}`);
       } catch (err) {
         logger.error(`[EmailService:GmailAPI] Failed to initialize Google OAuth2 client: ${err.message}`);
@@ -106,6 +117,14 @@ class EmailService {
         this.hasWarnedUnconfigured = true;
       }
     }
+  }
+
+  /**
+   * Re-evaluates and reconfigures credentials dynamically
+   */
+  reconfigure() {
+    this.initProvider();
+    return this.getStatus();
   }
 
   /**
@@ -167,7 +186,7 @@ class EmailService {
         };
       }
 
-      const email = tokenEmail || process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+      const email = tokenEmail || cleanEnvVar(process.env.GMAIL_USER) || 'sabari1082005@gmail.com';
       logger.info(`[EmailService:GmailAPI] Send-only OAuth2 verified successfully for account: ${email}`);
 
       return {
@@ -177,12 +196,25 @@ class EmailService {
         scopes: grantedScopes.length > 0 ? grantedScopes : ['https://www.googleapis.com/auth/gmail.send']
       };
     } catch (err) {
-      const sanitized = logger.redactConnectionString(err.message || 'Gmail API verification failed');
+      const rawMsg = err.message || '';
+      let userFriendlyMsg = rawMsg;
+      let errCode = err.code || 'GMAIL_AUTH_FAILED';
+
+      if (rawMsg.includes('invalid_grant')) {
+        errCode = 'INVALID_GRANT';
+        userFriendlyMsg = "Google OAuth 'invalid_grant' (HTTP 400): Refresh token has expired, been revoked, or does not match GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET. Solution: (1) In Google Cloud Console, ensure OAuth consent screen is published to 'In production' (tokens in Testing mode expire in 7 days). (2) Generate a fresh refresh token via Google OAuth Playground with scope 'https://www.googleapis.com/auth/gmail.send' and update GMAIL_REFRESH_TOKEN in Render environment variables.";
+      } else if (rawMsg.includes('insufficient authentication scopes') || err.code === 403) {
+        errCode = 'INSUFFICIENT_SCOPES';
+        userFriendlyMsg = "Google OAuth 403: Insufficient authentication scopes. Ensure scope 'https://www.googleapis.com/auth/gmail.send' was authorized during refresh token generation.";
+      }
+
+      const sanitized = logger.redactConnectionString(userFriendlyMsg);
       logger.error(`[EmailService:GmailAPI] OAuth2 verification failed: ${sanitized}`);
       return {
         success: false,
         message: sanitized,
-        code: err.code || 'GMAIL_AUTH_FAILED'
+        rawError: rawMsg,
+        code: errCode
       };
     }
   }
@@ -192,8 +224,8 @@ class EmailService {
    * @param {string} [recipientEmail]
    */
   async sendTestEmail(recipientEmail) {
-    const to = recipientEmail || process.env.ADMIN_EMAIL || process.env.GMAIL_USER || 'sabari1082005@gmail.com';
-    return this.sendMail({
+    const to = recipientEmail || cleanEnvVar(process.env.ADMIN_EMAIL) || cleanEnvVar(process.env.GMAIL_USER) || 'sabari1082005@gmail.com';
+    return this.sendEmail({
       to,
       subject: 'HireConnect - Gmail API OAuth 2.0 Test Email',
       text: 'This is a test email confirming that Gmail API OAuth 2.0 (HTTPS port 443) is working cleanly on HireConnect.',
@@ -202,7 +234,7 @@ class EmailService {
           <h2 style="color: #4f46e5; margin-top: 0;">HireConnect Email System Verification</h2>
           <p>This is a controlled test notification confirming that Gmail API OAuth 2.0 is delivering successfully via HTTPS port 443.</p>
           <div style="background-color: #f8fafc; padding: 12px; border-radius: 6px; font-size: 14px; margin: 16px 0;">
-            <p style="margin: 4px 0;"><strong>Sender:</strong> ${process.env.GMAIL_USER || 'sabari1082005@gmail.com'}</p>
+            <p style="margin: 4px 0;"><strong>Sender:</strong> ${cleanEnvVar(process.env.GMAIL_USER) || 'sabari1082005@gmail.com'}</p>
             <p style="margin: 4px 0;"><strong>Recipient:</strong> ${to}</p>
             <p style="margin: 4px 0;"><strong>Protocol:</strong> HTTPS REST (Port 443)</p>
             <p style="margin: 4px 0;"><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
@@ -217,8 +249,8 @@ class EmailService {
    * Returns safe configuration status (never leaks client secret or refresh token)
    */
   getStatus() {
-    const sender = process.env.GMAIL_USER || 'sabari1082005@gmail.com';
-    const admin = process.env.ADMIN_EMAIL || 'sabari1082005@gmail.com';
+    const sender = cleanEnvVar(process.env.GMAIL_USER) || 'sabari1082005@gmail.com';
+    const admin = cleanEnvVar(process.env.ADMIN_EMAIL) || 'sabari1082005@gmail.com';
     return {
       configured: this.isConfigured,
       provider: 'gmail-api',
@@ -226,10 +258,18 @@ class EmailService {
       port: 443,
       sender,
       adminRecipient: admin,
-      hasClientId: Boolean(process.env.GMAIL_CLIENT_ID),
-      hasClientSecret: Boolean(process.env.GMAIL_CLIENT_SECRET),
-      hasRefreshToken: Boolean(process.env.GMAIL_REFRESH_TOKEN)
+      hasClientId: Boolean(cleanEnvVar(process.env.GMAIL_CLIENT_ID)),
+      hasClientSecret: Boolean(cleanEnvVar(process.env.GMAIL_CLIENT_SECRET)),
+      hasRefreshToken: Boolean(cleanEnvVar(process.env.GMAIL_REFRESH_TOKEN))
     };
+  }
+
+  /**
+   * Backward-compatibility alias for sendEmail (Nodemailer convention)
+   * @param {object} mailOptions
+   */
+  async sendMail(mailOptions) {
+    return this.sendEmail(mailOptions);
   }
 
   /**
@@ -239,7 +279,7 @@ class EmailService {
    * @returns {Promise<{ success: boolean, messageId?: string, error?: string, code?: string }>}
    */
   async sendEmail({ to, subject, html, text, from }) {
-    const senderEmail = process.env.GMAIL_USER || 'sabari1082005@gmail.com';
+    const senderEmail = cleanEnvVar(process.env.GMAIL_USER) || 'sabari1082005@gmail.com';
     const fromAddress = from || `HireConnect <${senderEmail}>`;
 
     // 1. Validate required fields

@@ -20,6 +20,10 @@ const NOTIFICATION_TYPES = [
   'job_published',
   'job_closed',
   'company_verification_updated',
+  'account_suspended',
+  'account_reactivated',
+  'job_moderation_removed',
+  'job_moderation_restored',
   'system_announcement'
 ];
 
